@@ -1,0 +1,24 @@
+# Секреты и локальная конфигурация
+.env
+.env.*
+!.env.example
+
+# Отчёты и артефакты
+coverage/*
+!coverage/.gitkeep
+web/coverage/
+web/dist/
+*.tsbuildinfo
+*.out
+*.test
+/bin/
+.c0-report.txt
+
+# Зависимости
+node_modules/
+
+# Редакторы и ОС
+.DS_Store
+.idea/
+.vscode/
+*.swp

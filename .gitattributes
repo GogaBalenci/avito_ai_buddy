@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+# Двоичные файлы — без преобразования переводов строк
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Сгенерированное — не показывать в диффах
+web/package-lock.json linguist-generated=true -diff

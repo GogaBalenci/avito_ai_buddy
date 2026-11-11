@@ -1,0 +1,69 @@
+# golangci-lint v2. Package boundaries (12 §2.1) are enforced by depguard,
+# so violating them fails CI, not only code review.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - depguard
+    - bodyclose
+    - errorlint
+    - misspell
+    - nolintlint
+    - unconvert
+  settings:
+    misspell:
+      locale: US
+    depguard:
+      rules:
+        # The application does not depend on mocks: they can be thrown away
+        # and replaced by real services via MCP_*_URL.
+        app-does-not-import-mocks:
+          files:
+            - "$all"
+            - "!**/internal/mcpmocks/**"
+            - "!**/cmd/mcp-mocks/**"
+          deny:
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks"
+              desc: "application code must not depend on mcp-mocks (12 §2.1)"
+        # A mock knows nothing about the agent, like a real corporate service.
+        mocks-do-not-import-app-internals:
+          files:
+            - "**/internal/mcpmocks/**"
+          deny:
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/agent"
+              desc: "mcp-mocks must not know about the agent (12 §2.1)"
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/actions"
+              desc: "mcp-mocks must not know about drafts (12 §2.1)"
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/httpapi"
+              desc: "mcp-mocks must not know about the HTTP API (12 §2.1)"
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/store"
+              desc: "mcp-mocks must not use the app schema (12 §2.1)"
+        # The service role `system` can only originate from access sync (13 §2).
+        sysactor-only-access-sync:
+          list-mode: strict
+          files:
+            - "**/internal/auth/sysactor/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
+  exclusions:
+    generated: lax
+    # v2 enables no exclusion presets by default: without std-error-handling
+    # errcheck reports every unchecked Close/Flush/print
+    presets:
+      - std-error-handling
+      - common-false-positives
+    paths:
+      - internal/gen
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax

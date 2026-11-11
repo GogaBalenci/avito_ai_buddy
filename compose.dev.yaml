@@ -1,0 +1,11 @@
+# Только для локальной разработки: публикует PostgreSQL и Redis на 127.0.0.1,
+# чтобы запускать go test / go run с хоста.
+#   docker compose -f docker-compose.yml -f compose.dev.yaml up -d --wait postgres redis
+# Эксперту этот файл не нужен.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:55432:5432"
+  redis:
+    ports:
+      - "127.0.0.1:56379:6379"

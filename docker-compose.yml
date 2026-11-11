@@ -1,0 +1,175 @@
+# AI-buddy («Авиитик Витя») — локальный стенд.
+# Запуск:  docker compose up --build --wait   → http://localhost:${WEB_PORT:-8380}
+# Наружу публикуется только web. Значения по умолчанию совпадают с .env.example,
+# поэтому .env создавать не обязательно (compose прочитает его, если он есть).
+
+name: avito-ai-buddy
+
+x-build-args: &build-args
+  REGISTRY_PREFIX: ${REGISTRY_PREFIX:-docker.io/}
+
+x-healthcheck-timing: &hc-timing
+  interval: 5s
+  timeout: 3s
+  retries: 12
+  start_period: 10s
+
+# Переменные api (12 §4.3: всё, кроме ACCESS_TIMER_MINUTES)
+x-api-env: &api-env
+  TZ: ${TZ:-Europe/Moscow}
+  DATABASE_URL: ${DATABASE_URL:-postgres://buddy:buddy_local_only@postgres:5432/buddy?sslmode=disable}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  MCP_CHECKLIST_URL: ${MCP_CHECKLIST_URL:-http://mcp-mocks:8090/mcp/checklist}
+  MCP_KNOWLEDGE_URL: ${MCP_KNOWLEDGE_URL:-http://mcp-mocks:8090/mcp/knowledge}
+  MCP_ABSENCES_URL: ${MCP_ABSENCES_URL:-http://mcp-mocks:8090/mcp/absences}
+  MCP_ACCESS_URL: ${MCP_ACCESS_URL:-http://mcp-mocks:8090/mcp/access}
+  MCP_TIMEOUT_MS: ${MCP_TIMEOUT_MS:-3000}
+  MCP_MOCKS_ADMIN_URL: ${MCP_MOCKS_ADMIN_URL:-http://mcp-mocks:8090/internal}
+  LLM_PROVIDER: ${LLM_PROVIDER:-demo}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_MODEL: ${LLM_MODEL:-}
+  LLM_EXTRA_HEADERS: ${LLM_EXTRA_HEADERS:-}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-10}
+  DEMO_TOOLS_ENABLED: ${DEMO_TOOLS_ENABLED:-true}
+  DEMO_INTERN_BE_DAYS_AGO: ${DEMO_INTERN_BE_DAYS_AGO:-3}
+  DEMO_INTERN_FE_DAYS_AGO: ${DEMO_INTERN_FE_DAYS_AGO:-10}
+  PATH_POLL_INTERVAL_MS: ${PATH_POLL_INTERVAL_MS:-10000}
+  KB_R_HIGH: ${KB_R_HIGH:-0.1}
+  KB_R_LOW: ${KB_R_LOW:-0.03}
+  SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: ${REGISTRY_PREFIX:-docker.io/}library/postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-buddy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buddy_local_only}
+      POSTGRES_DB: ${POSTGRES_DB:-buddy}
+      TZ: ${TZ:-Europe/Moscow}
+    volumes:
+      # postgres 18+: том монтируется в /var/lib/postgresql (данные — в подкаталоге версии)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h 127.0.0.1"]
+      <<: *hc-timing
+    restart: unless-stopped
+
+  redis:
+    image: ${REGISTRY_PREFIX:-docker.io/}library/redis:8-alpine
+    # Без сохранения на диск: сессии и черновики живут только в памяти (12 §4.1)
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *hc-timing
+    restart: unless-stopped
+
+  mcp-mocks:
+    build:
+      context: .
+      dockerfile: deploy/docker/mcp-mocks.Dockerfile
+      args: *build-args
+    image: avito-ai-buddy/mcp-mocks:local
+    # Порт 8090 наружу не публикуется: имитации вызывает только api (12 §7.1)
+    expose: ["8090"]
+    environment:
+      TZ: ${TZ:-Europe/Moscow}
+      DATABASE_URL: ${DATABASE_URL:-postgres://buddy:buddy_local_only@postgres:5432/buddy?sslmode=disable}
+      ACCESS_TIMER_MINUTES: ${ACCESS_TIMER_MINUTES:-2}
+      DEMO_TOOLS_ENABLED: ${DEMO_TOOLS_ENABLED:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/healthz"]
+      <<: *hc-timing
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/api.Dockerfile
+      args: *build-args
+    image: avito-ai-buddy/api:local
+    expose: ["8080"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mcp-mocks:
+        condition: service_healthy
+    healthcheck:
+      # /healthz зелёный, только если отвечают PostgreSQL и Redis (12 §3.4)
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      <<: *hc-timing
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/docker/web.Dockerfile
+      args: *build-args
+    image: avito-ai-buddy/web:local
+    ports:
+      - "${WEB_PORT:-8380}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      <<: *hc-timing
+    restart: unless-stopped
+
+  # ---------- profile: test ----------
+  # docker compose --profile test run --rm test-go | test-web | smoke
+  test-go:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: deploy/docker/test-go.Dockerfile
+      args: *build-args
+    image: avito-ai-buddy/test-go:local
+    environment:
+      OUT: /out
+      DATABASE_URL: ${DATABASE_URL:-postgres://buddy:buddy_local_only@postgres:5432/buddy?sslmode=disable}
+    volumes:
+      - ./coverage:/out
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  test-web:
+    profiles: ["test"]
+    image: ${REGISTRY_PREFIX:-docker.io/}library/node:24-alpine
+    working_dir: /web
+    volumes:
+      - ./web:/web
+    # Заглушка до C3: тесты фронта (vitest --coverage → web/coverage) появятся вместе с экранами
+    command: ["node", "-e", "console.log('test-web: front-end tests are not implemented yet (C3)')"]
+
+  smoke:
+    profiles: ["test"]
+    image: avito-ai-buddy/test-go:local
+    build:
+      context: .
+      dockerfile: deploy/docker/test-go.Dockerfile
+      args: *build-args
+    environment:
+      BASE_URL: http://web
+    # Заглушка до C3: пока проверяет, что web отдаёт SPA и проксирует /healthz в api
+    command: ["sh", "scripts/smoke.sh"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # ---------- profile: observability ----------
+  # Пока пусто. Grafana (${GRAFANA_PORT:-8381}) с дашбордом по app.events появится по 12 §13.
+
+volumes:
+  pgdata:
