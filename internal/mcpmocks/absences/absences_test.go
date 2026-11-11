@@ -160,9 +160,8 @@ func TestFault(t *testing.T) {
 	if err := c.Call(ctx, "absences", "list_requests", map[string]any{"actor": intern}, nil); err != nil {
 		t.Fatalf("reads still work: %v", err)
 	}
-	old := absences.SlowDelay
-	absences.SlowDelay = 400 * time.Millisecond
-	t.Cleanup(func() { absences.SlowDelay = old })
+	old := absences.SetSlowDelay(400 * time.Millisecond)
+	t.Cleanup(func() { absences.SetSlowDelay(old) })
 	_, _ = env.Mocks.Flags.Set(ctx, "mock_absences_fault", "slow")
 	c.Timeout = 200 * time.Millisecond
 	if err := create(c, intern, uuid.NewString(), "2026-11-13", "2026-11-13", nil); !mcpclient.IsCode(err, mcpclient.CodeTimeout) {

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -22,8 +23,14 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/timeoff/rules"
 )
 
-// SlowDelay is the delay of the "slow" fault: longer than MCP_TIMEOUT_MS.
-var SlowDelay = 4 * time.Second
+// slowDelay is the delay of the "slow" fault: longer than MCP_TIMEOUT_MS.
+// Atomic: tests shorten it while a slow call may still be running.
+var slowDelay atomic.Int64
+
+func init() { slowDelay.Store(int64(4 * time.Second)) }
+
+// SetSlowDelay changes the delay of the "slow" fault and returns the previous one.
+func SetSlowDelay(d time.Duration) time.Duration { return time.Duration(slowDelay.Swap(int64(d))) }
 
 // Service is the absences mock.
 type Service struct {
@@ -140,7 +147,7 @@ func (s *Service) createOnce(ctx context.Context, employeeID, key, hash, from, t
 			return mcpx.Err("UNAVAILABLE", "absence service is unavailable (demo fault)", nil)
 		case "slow":
 			select {
-			case <-time.After(SlowDelay):
+			case <-time.After(time.Duration(slowDelay.Load())):
 			case <-ctx.Done():
 				return ctx.Err()
 			}
