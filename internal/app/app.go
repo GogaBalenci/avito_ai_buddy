@@ -20,6 +20,8 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/contracts"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/rules"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
@@ -30,6 +32,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/health"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpapi"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpx"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/kb"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/migrate"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
@@ -144,6 +147,14 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		a.Close()
 		return nil, err
 	}
+	kbDir, _ := fs.Sub(content.FS(), "kb")
+	docs, err := kb.Load(kbDir)
+	if err != nil {
+		a.Close()
+		return nil, err
+	}
+	srv.Agent = &router.Agent{Rules: rules.MustLoad(), Path: srv.Path, Actions: srv.Actions, Guard: g, Events: rec,
+		Docs: router.NewStaticDocs(docs), Redis: a.Redis, Clock: clk, Requests: srv.RequestsOf}
 	a.Handler, a.Server = h, srv
 	return a, nil
 }

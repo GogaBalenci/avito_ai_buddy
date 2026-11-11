@@ -1,5 +1,5 @@
 ## 1. Вход и правила demo (к C3)
-- [ ] 1.1 `POST /api/chat/messages`: ровно одно из `text`/`payload`, грамматика payload, `client_message_id` (Redis, 10 мин), лимиты, `GET /api/chat/history`
+- [x] 1.1 `POST /api/chat/messages`: ровно одно из `text`/`payload`, грамматика payload, `client_message_id` (Redis, 10 мин), лимиты, `GET /api/chat/history`
 - [x] 1.2 `internal/agent/pii`: маскирование до БД, логов и модели; тесты на `1.13`, `ABS-000123`, даты
 - [x] 1.3 `intents.ru.yaml` + загрузчик со стеммингом; алгоритм §6.3 (отрицание, несколько намерений, защитные темы первыми)
 - [x] 1.4 Маршруты `help`, `unknown`, `my_path`, `step_explain`, `step_done`, `time_off`; ответы наставнику на сценарии стажёра

@@ -139,3 +139,8 @@ func sortByCreated(xs []api.RequestView) {
 		}
 	}
 }
+
+// RequestsOf returns all requests of the user, newest first (chat my_requests).
+func (s *Server) RequestsOf(ctx context.Context, userID string) ([]api.RequestView, error) {
+	return s.requests(ctx, userID, nil, false)
+}

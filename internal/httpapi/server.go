@@ -24,6 +24,7 @@ import (
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
@@ -70,6 +71,10 @@ type Deps struct {
 	AdminHTTP    *http.Client // calls MCP_MOCKS_ADMIN_URL (demo only)
 	// Sync brings access requests of an intern up to date (S4, 11 §3.6); nil until S4.
 	Sync func(ctx context.Context, userID string) error
+	// Agent handles chat messages (09).
+	Agent *router.Agent
+	// ChatWait bounds waiting for a parallel repeat of a message (tests shorten it).
+	ChatWait time.Duration
 }
 
 // Server implements api.ServerInterface.

@@ -19,6 +19,8 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/content"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/rules"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/demo"
@@ -26,6 +28,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/events"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/flags"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/health"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/kb"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/mockstest"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
@@ -103,6 +106,14 @@ func build(t *testing.T, withMocks bool) *harness {
 		Seeder: seeder,
 		Health: health.Handler(map[string]health.Probe{"postgres": health.ProbeFunc(func(context.Context) error { return nil })}, log),
 	}}
+	kbDir, _ := fs.Sub(content.FS(), "kb")
+	docs, err := kb.Load(kbDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.ChatWait = 300 * time.Millisecond
+	s.Agent = &router.Agent{Rules: rules.MustLoad(), Path: s.Path, Actions: s.Actions, Guard: g, Events: rec,
+		Docs: router.NewStaticDocs(docs), Redis: rc, Clock: clk, Requests: s.RequestsOf}
 	h, err := Handler(s)
 	if err != nil {
 		t.Fatal(err)
