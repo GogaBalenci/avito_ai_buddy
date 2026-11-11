@@ -1,8 +1,8 @@
 package events_test
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
