@@ -149,6 +149,11 @@ func (s *Service) createOnce(ctx context.Context, employeeID, key, hash, from, t
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('absences:' || $1))`, employeeID); err != nil {
 			return err
 		}
+		// the same key may have been committed while we waited for the lock
+		if res, found, err := s.replay(ctx, tx, key, hash); found || err != nil {
+			out = res
+			return err
+		}
 		existing, err := own(ctx, tx, employeeID)
 		if err != nil {
 			return err
