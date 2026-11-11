@@ -1,0 +1,341 @@
+{
+  "description": "Общие тест-векторы проверки дат отгула (10 §16.1). Прогоняются в Go (internal/timeoff/rules) и во фронте (Zod). OVERLAP проверяет только сервер: клиентские тесты пропускают кейсы с непустым existing.",
+  "today": "2026-11-10",
+  "timezone": "Europe/Moscow",
+  "employee_id": "u-intern-be",
+  "max_working_days": 5,
+  "horizon_days": 90,
+  "max_date": "2027-02-08",
+  "cases": [
+    {
+      "id": "V-01",
+      "date_from": "2026-11-13",
+      "date_to": "2026-11-13",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 1
+      }
+    },
+    {
+      "id": "V-02",
+      "date_from": "2026-11-10",
+      "date_to": "2026-11-10",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 1
+      }
+    },
+    {
+      "id": "V-03",
+      "date_from": "2026-11-09",
+      "date_to": "2026-11-10",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "DATE_IN_PAST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-04",
+      "date_from": "2026-11-13",
+      "date_to": "2026-11-12",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "range",
+            "code": "RANGE_REVERSED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-05",
+      "date_from": "2026-11-14",
+      "date_to": "2026-11-14",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "WEEKEND_DATE"
+          },
+          {
+            "field": "date_to",
+            "code": "WEEKEND_DATE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-06",
+      "date_from": "2026-11-13",
+      "date_to": "2026-11-15",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_to",
+            "code": "WEEKEND_DATE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-07",
+      "date_from": "2026-11-13",
+      "date_to": "2026-11-16",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 2
+      }
+    },
+    {
+      "id": "V-08",
+      "date_from": "2026-11-16",
+      "date_to": "2026-11-20",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 5
+      }
+    },
+    {
+      "id": "V-09",
+      "date_from": "2026-11-16",
+      "date_to": "2026-11-23",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "range",
+            "code": "TOO_LONG"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-10",
+      "date_from": "2026-11-11",
+      "date_to": "2026-11-17",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 5
+      }
+    },
+    {
+      "id": "V-11",
+      "date_from": "2027-02-08",
+      "date_to": "2027-02-08",
+      "existing": [],
+      "expect": {
+        "ok": true,
+        "working_days": 1
+      }
+    },
+    {
+      "id": "V-12",
+      "date_from": "2027-02-09",
+      "date_to": "2027-02-09",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "TOO_FAR"
+          },
+          {
+            "field": "date_to",
+            "code": "TOO_FAR"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-13",
+      "date_from": "",
+      "date_to": "2026-11-13",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "REQUIRED"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-14",
+      "date_from": "2026-02-30",
+      "date_to": "2026-11-13",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "INVALID_DATE"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-15",
+      "date_from": "2026-11-09",
+      "date_to": "2026-11-08",
+      "existing": [],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "date_from",
+            "code": "DATE_IN_PAST"
+          },
+          {
+            "field": "date_to",
+            "code": "DATE_IN_PAST"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-16",
+      "date_from": "2026-11-17",
+      "date_to": "2026-11-18",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-be",
+          "date_from": "2026-11-16",
+          "date_to": "2026-11-17",
+          "status": "registered"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "range",
+            "code": "OVERLAP"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-17",
+      "date_from": "2026-11-18",
+      "date_to": "2026-11-18",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-be",
+          "date_from": "2026-11-16",
+          "date_to": "2026-11-17",
+          "status": "registered"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "working_days": 1
+      }
+    },
+    {
+      "id": "V-18",
+      "date_from": "2026-11-16",
+      "date_to": "2026-11-17",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-be",
+          "date_from": "2026-11-16",
+          "date_to": "2026-11-17",
+          "status": "cancelled"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "working_days": 2
+      }
+    },
+    {
+      "id": "V-19",
+      "date_from": "2026-11-12",
+      "date_to": "2026-11-20",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-be",
+          "date_from": "2026-11-16",
+          "date_to": "2026-11-17",
+          "status": "registered"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "range",
+            "code": "TOO_LONG"
+          }
+        ]
+      }
+    },
+    {
+      "id": "V-20",
+      "date_from": "2026-11-13",
+      "date_to": "2026-11-13",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-fe",
+          "date_from": "2026-11-13",
+          "date_to": "2026-11-13",
+          "status": "registered"
+        }
+      ],
+      "expect": {
+        "ok": true,
+        "working_days": 1
+      }
+    },
+    {
+      "id": "V-21",
+      "date_from": "2026-11-12",
+      "date_to": "2026-11-18",
+      "existing": [
+        {
+          "request_id": "ABS-000200",
+          "employee_id": "u-intern-be",
+          "date_from": "2026-11-16",
+          "date_to": "2026-11-17",
+          "status": "registered"
+        }
+      ],
+      "expect": {
+        "ok": false,
+        "violations": [
+          {
+            "field": "range",
+            "code": "OVERLAP"
+          }
+        ]
+      }
+    }
+  ]
+}
