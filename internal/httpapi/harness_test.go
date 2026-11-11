@@ -25,6 +25,8 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/flags"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/health"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/mockstest"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/store"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/testkit"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/testkit/pgtest"
@@ -41,7 +43,13 @@ type harness struct {
 	events *events.Recorder
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return build(t, false) }
+
+// newIntegration runs the API against the real mcp-mocks (12 §11.1, layer
+// «integration with mocks»): its own database, the same clock.
+func newIntegration(t *testing.T) *harness { return build(t, true) }
+
+func build(t *testing.T, withMocks bool) *harness {
 	t.Helper()
 	pool, _ := pgtest.New(t)
 	rc, _ := testkit.Redis(t)
@@ -67,6 +75,12 @@ func newHarness(t *testing.T) *harness {
 	emp := &store.Employees{Pool: pool}
 	rec := &events.Recorder{}
 	fake := mcpclient.NewFake()
+	var tools mcpclient.Client = fake
+	if withMocks {
+		env := mockstest.Start(t, clk)
+		tools = &mcpclient.MCP{URLs: env.URLs(), Timeout: 5 * time.Second}
+	}
+	g := &guard.Guard{Employees: emp}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	s := &Server{Deps: Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: rc, Clock: clk,
@@ -77,8 +91,9 @@ func newHarness(t *testing.T) *harness {
 		AccountNotes: map[string]string{"u-intern-be": "Backend", "u-intern-fe": "Frontend", "u-mentor": "Наставник"},
 		Events:       rec,
 		Flags:        flags.Static{"llm_enabled": "on", "llm_rephrase": "on"},
-		Tools:        fake,
-		Guard:        &guard.Guard{Employees: emp},
+		Tools:        tools,
+		Guard:        g,
+		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
 		Health:       health.Handler(map[string]health.Probe{"postgres": health.ProbeFunc(func(context.Context) error { return nil })}, log),
 	}}
 	h, err := Handler(s)

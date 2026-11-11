@@ -30,6 +30,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpx"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/migrate"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/store"
 	"github.com/GogaBalenci/avito_ai_buddy/migrations"
 )
@@ -114,6 +115,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		notes[p.UserID] = p.Description
 	}
 	emp := &store.Employees{Pool: pool}
+	tools := &mcpclient.MCP{URLs: cfg.MCPURLs, Timeout: cfg.MCPTimeout, Log: log}
+	g := &guard.Guard{Employees: emp}
 	srv := &httpapi.Server{Deps: httpapi.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: a.Redis, Clock: clk,
 		Sessions:     &auth.Sessions{Redis: a.Redis, Employees: emp, Clock: clk, TTL: cfg.SessionTTL, Secure: cfg.CookieSecure},
@@ -123,8 +126,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		AccountNotes: notes,
 		Events:       &events.PG{Pool: pool, Clock: clk},
 		Flags:        &flags.PG{Pool: pool},
-		Tools:        &mcpclient.MCP{URLs: cfg.MCPURLs, Timeout: cfg.MCPTimeout, Log: log},
-		Guard:        &guard.Guard{Employees: emp},
+		Tools:        tools,
+		Guard:        g,
+		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
 		Health:       health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
 	}}
 	h, err := httpapi.Handler(srv)

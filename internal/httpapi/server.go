@@ -31,6 +31,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/flags"
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/reqctx"
 )
 
@@ -61,6 +62,9 @@ type Deps struct {
 	Tools        mcpclient.Client
 	Guard        *guard.Guard
 	Health       http.Handler
+	Path         *path.Service
+	// Sync brings access requests of an intern up to date (S4, 11 §3.6); nil until S4.
+	Sync func(ctx context.Context, userID string) error
 }
 
 // Server implements api.ServerInterface.
