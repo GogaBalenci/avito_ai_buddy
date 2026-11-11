@@ -1,0 +1,85 @@
+# Общий трек: «Материалы для всех» из чек-листа стажёра (docs/source/checklist-common.csv).
+# Порядок шагов и роли выведены командой (docs/08-intern-journey.md) — это допущение, а не данные Авито.
+# Шаги наставника (owner: mentor) лежат здесь для трассировки к чек-листу и стажёру не показываются.
+schema_version: 1
+id: common
+title: Общие шаги для всех стажёров
+kind: common
+synthetic: false
+source: "Чек-лист стажёра Авито — «Материалы для всех» (CSV из кейса)"
+
+periods:
+  - { id: week1,  title: "Неделя 1 — Вход в команду",         from_day: 1,  to_day: 7 }
+  - { id: week2,  title: "Неделя 2 — Инструменты и платформа", from_day: 8,  to_day: 14 }
+  - { id: month1, title: "Недели 3–4 — Процессы и стандарты",  from_day: 15, to_day: 30 }
+  - { id: month2, title: "Месяц 2 — Глубже в платформу",       from_day: 31, to_day: 60 }
+  - { id: month3, title: "Месяц 3 — Самостоятельность",        from_day: 61, to_day: 90 }
+  - { id: after3, title: "После 3 месяцев — Экватор и выпуск", from_day: 91, to_day: null }
+
+steps:
+  # --- Неделя 1: шаги наставника и руководителя (стажёру не показываются) ---
+  - { id: cm-1.1, checklist_ref: "1.1", period: week1, order: 1, type: org, owner: mentor,
+      title: "Добавь стажёра во все чаты и каналы, в том числе закрытые", help: { kind: track_only } }
+  - { id: cm-1.2, checklist_ref: "1.2", period: week1, order: 2, type: access, owner: mentor,
+      title: "Проверь, что стажёр запросил доступы ко всем нужным инструментам и пространствам", help: { kind: track_only } }
+  - { id: cm-1.3, checklist_ref: "1.3", period: week1, order: 3, type: meet, owner: mentor,
+      title: "Назначь со стажёром регулярные 1:1", help: { kind: track_only } }
+  - { id: cm-1.4, checklist_ref: "1.4", period: week1, order: 4, type: meet, owner: mentor,
+      title: "Обсуди цели и план адаптации, критерии успеха и OKR команды", help: { kind: track_only } }
+  - { id: cm-1.5, checklist_ref: "1.5", period: week1, order: 5, type: org, owner: mentor,
+      title: "Запроси у куратора стажировки методичку наставника", help: { kind: track_only } }
+
+  # --- Неделя 1: шаги стажёра ---
+  - { id: cm-1.6, checklist_ref: "1.6", period: week1, order: 10, type: meet, owner: intern,
+      title: "Познакомься с командой",
+      help: { kind: explain, kb_doc: team-structure, source_level: playbook } }
+  - { id: cm-1.7, checklist_ref: "1.7", period: week1, order: 20, type: access, owner: intern,
+      title: "Попроси добавить тебя во все ключевые каналы и чаты",
+      help: { kind: access_request, resource: team-channels } }
+  - { id: cm-1.10, checklist_ref: "1.10", period: week1, order: 30, type: access, owner: intern,
+      title: "Запроси доступ в пространство своего кластера и команды и изучи его",
+      help: { kind: access_request, resource: space-cluster } }
+  - { id: cm-1.9, checklist_ref: "1.9", period: week1, order: 40, type: org, owner: intern,
+      title: "Заведи конспект встреч с наставником",
+      help: { kind: track_only } }
+  - { id: cm-1.8, checklist_ref: "1.8", period: week1, order: 120, type: meet, owner: intern,
+      title: "Обсуди с наставником встречи, на которых ты побывал(а), и задай вопросы",
+      help: { kind: ask_mentor } }
+
+  # --- Неделя 2 ---
+  - { id: cm-2.1, checklist_ref: "2.1", period: week2, order: 10, type: org, owner: intern,
+      title: "Запроси у куратора инструмент отслеживания прогресса и внеси цели и ожидания",
+      help: { kind: ask_mentor } }
+  - { id: cm-2.2, checklist_ref: "2.2", period: week2, order: 20, type: learn, owner: intern,
+      title: "Изучи документы и мануалы своей команды, вертикали и кластера",
+      help: { kind: track_only } }
+
+  # --- Недели 3–4 ---
+  - { id: cm-3.9, checklist_ref: "3.9", period: month1, order: 20, type: learn, owner: intern,
+      title: "Изучи основы защиты персональных данных, памятку по раскрытию информации и политику по КИ",
+      help: { kind: track_only } }
+
+  # --- Месяц 2 ---
+  - { id: cm-4.4, checklist_ref: "4.4", period: month2, order: 40, type: learn, owner: intern,
+      title: "Изучи памятку о закрытии практики и учебных работах",
+      help: { kind: track_only } }
+
+  # --- После 3 месяцев ---
+  - { id: cm-6.1, checklist_ref: "6.1", period: after3, order: 10, type: org, owner: intern,
+      title: "Подготовься к экваторной встрече: мастер-классы, презентация и речь",
+      help: { kind: track_only } }
+  - { id: cm-6.2, checklist_ref: "6.2", period: after3, order: 20, type: tell, owner: intern,
+      title: "Выступи на экваторной встрече с промежуточными результатами",
+      help: { kind: ask_mentor } }
+  - { id: cm-6.3, checklist_ref: "6.3", period: after3, order: 1, type: meet, owner: mentor,
+      title: "Сходи на бриф перед экватором, проверь презентацию стажёра и подготовь напутствие",
+      help: { kind: track_only } }
+  - { id: cm-6.4, checklist_ref: "6.4", period: after3, order: 2, type: meet, owner: mentor,
+      title: "Обсуди со стажёром промежуточные итоги на 1:1 и дай обратную связь",
+      help: { kind: track_only } }
+  - { id: cm-6.5, checklist_ref: "6.5", period: after3, order: 30, type: meet, owner: intern,
+      title: "Приходи на выпускной",
+      help: { kind: track_only } }
+  - { id: cm-6.6, checklist_ref: "6.6", period: after3, order: 40, type: org, owner: intern,
+      title: "Пройди опрос о том, как прошла стажировка",
+      help: { kind: track_only } }

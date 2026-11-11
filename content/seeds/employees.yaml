@@ -1,0 +1,24 @@
+# Синтетические тестовые учётки. Реальных людей и их данных здесь нет.
+# Дата старта стажёров вычисляется при сиде: today − DEMO_INTERN_*_DAYS_AGO (12 §8.4).
+version: 1
+employees:
+  - user_id: u-intern-be
+    display_name: Стажёр Backend (тестовый)
+    role: intern
+    track: backend
+    mentor_id: u-mentor
+    start_days_ago_env: DEMO_INTERN_BE_DAYS_AGO
+    start_days_ago_default: 3
+    description: "Backend, неделя 1 — основной сценарий"
+  - user_id: u-intern-fe
+    display_name: Стажёр Frontend (тестовый)
+    role: intern
+    track: frontend
+    mentor_id: u-mentor
+    start_days_ago_env: DEMO_INTERN_FE_DAYS_AGO
+    start_days_ago_default: 10
+    description: "Frontend (тестовый трек), неделя 2"
+  - user_id: u-mentor
+    display_name: Наставник (тестовый)
+    role: mentor
+    description: "Наставник обоих стажёров: «Мои стажёры», «Входящие»"

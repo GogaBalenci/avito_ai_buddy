@@ -1,0 +1,68 @@
+# Синтетический каталог тестового сервиса доступов (11 §3.5.1, 13 §8.1).
+# approver — только подпись: решение принимает правило policy.
+version: 1
+resources:
+  - id: team-channels
+    title: Ключевые каналы и чаты команды
+    kind: channel
+    description: "Тестовое описание: каналы и чаты, где команда обсуждает работу."
+    policy: auto
+    access_level: write
+    approver: Администратор каналов команды
+    allowed_roles: [intern]
+    aliases: [ключевые каналы, каналы команды, чаты команды, все каналы и чаты, ключевые чаты]
+  - id: space-cluster
+    title: Пространство кластера и команды в базе знаний
+    kind: space
+    description: "Тестовое описание: пространство с документами кластера и команды."
+    policy: mentor
+    access_level: read
+    approver: Владелец пространства
+    allowed_roles: [intern]
+    aliases: [пространство кластера, пространство команды, confluence команды]
+  - id: channel-tech-dep
+    title: Канал Tech-dep
+    kind: channel
+    description: "Тестовое описание: канал для технических зависимостей между командами. Уточни у наставника, зачем он твоей команде."
+    policy: timer
+    access_level: write
+    approver: Владелец канала
+    allowed_roles: [intern]
+    aliases: [tech-dep, техдеп, тех деп, tech dep, канал tech-dep]
+  - id: repo-frontend
+    title: Репозиторий фронтенда команды
+    kind: repo
+    description: "Тестовое описание: репозиторий с кодом фронтенда команды."
+    policy: auto
+    access_level: read
+    approver: Тимлид команды
+    allowed_roles: [intern]
+    aliases: [репозиторий фронтенда, фронтовый репозиторий]
+  - id: channel-frontend
+    title: Канал фронтенд-сообщества
+    kind: channel
+    description: "Тестовое описание: канал сообщества фронтенд-разработчиков."
+    policy: auto
+    access_level: write
+    approver: Администратор сообщества
+    allowed_roles: [intern]
+    aliases: [канал фронтенд-сообщества, фронтенд-сообщество]
+  - id: figma-library
+    title: Библиотека компонентов в Figma
+    kind: tool
+    description: "Тестовое описание: библиотека компонентов дизайн-системы в Figma."
+    policy: mentor
+    access_level: read
+    approver: Дизайнер команды
+    allowed_roles: [intern]
+    aliases: [figma, фигма, библиотека компонентов]
+  - id: prod-db-write
+    title: Запись в продовую базу данных (тестовый пример)
+    kind: database
+    description: "Тестовый пример ресурса, который не выдаётся ни одной роли прототипа."
+    policy: mentor
+    access_level: write
+    approver: null
+    allowed_roles: []
+    deny_explanation: "По тестовой матрице прав доступ на запись в продовую базу роли стажёра не положен."
+    aliases: [продовая база, продовую базу, прод бд, продовая бд, production database, запись в прод, прод базу, продовой базе, продовой базы]

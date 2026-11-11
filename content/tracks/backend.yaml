@@ -1,0 +1,106 @@
+# Трек Backend: «Чек-лист Backend» из кейса (docs/source/checklist-backend.csv).
+# Нумерация шагов — docs/08-intern-journey.md; порядок внутри периода — допущение команды.
+schema_version: 1
+id: backend
+title: Backend
+kind: direction
+extends: common
+synthetic: false
+source: "Чек-лист стажёра Авито — «Чек-лист Backend» (CSV из кейса)"
+
+steps:
+  # --- Неделя 1 ---
+  - { id: be-1.11, checklist_ref: "1.11", period: week1, order: 50, type: learn, owner: intern,
+      title: "Изучи принципы разработки Авито",
+      help: { kind: explain, kb_doc: dev-principles, source_level: playbook } }
+  - { id: be-1.12, checklist_ref: "1.12", period: week1, order: 60, type: learn, owner: intern,
+      title: "Изучи «Авито в цифрах»",
+      help: { kind: explain, kb_doc: avito-in-numbers, source_level: case } }
+  - { id: be-1.13, checklist_ref: "1.13", period: week1, order: 70, type: setup, owner: intern,
+      title: "Настрой avito-cli",
+      help: { kind: explain, kb_doc: term-avito-cli, source_level: none } }
+  - { id: be-1.14, checklist_ref: "1.14", period: week1, order: 80, type: setup, owner: intern,
+      title: "Добавь ключи в stash",
+      help: { kind: explain, kb_doc: term-stash, source_level: none } }
+  - { id: be-1.15, checklist_ref: "1.15", period: week1, order: 90, type: access, owner: intern,
+      title: "Попроси руководителя или наставника добавить тебя в канал Tech-dep",
+      help: { kind: access_request, resource: channel-tech-dep } }
+  - { id: be-1.16, checklist_ref: "1.16", period: week1, order: 100, type: tell, owner: intern,
+      title: "Расскажи о Sentry",
+      help: { kind: explain, kb_doc: tool-sentry, source_level: public } }
+  - { id: be-1.17, checklist_ref: "1.17", period: week1, order: 110, type: learn, owner: intern,
+      title: "Прорешай задачи на учебной платформе, чтобы познакомиться с инструментами",
+      help: { kind: track_only } }
+
+  # --- Неделя 2 ---
+  - { id: be-2.5, checklist_ref: "2.5", period: week2, order: 30, type: learn, owner: intern,
+      title: "Изучи PaaS: дашборд и канал новостей",
+      help: { kind: explain, kb_doc: avito-paas, source_level: playbook } }
+  - { id: be-2.3, checklist_ref: "2.3", period: week2, order: 40, type: learn, owner: intern,
+      title: "Изучи документацию по работе с базами данных",
+      help: { kind: explain, kb_doc: db-guide, source_level: none } }
+  - { id: be-2.6, checklist_ref: "2.6", period: week2, order: 50, type: learn, owner: intern,
+      title: "Изучи документацию по Go",
+      help: { kind: track_only } }
+  - { id: be-2.7, checklist_ref: "2.7", period: week2, order: 60, type: learn, owner: intern,
+      title: "Изучи профили инженеров",
+      help: { kind: explain, kb_doc: engineer-profile-e1, source_level: playbook } }
+  - { id: be-2.4, checklist_ref: "2.4", period: week2, order: 70, type: tell, owner: intern,
+      title: "Расскажи об Observer",
+      help: { kind: explain, kb_doc: term-observer, source_level: none } }
+
+  # --- Недели 3–4 ---
+  - { id: be-3.1, checklist_ref: "3.1", period: month1, order: 10, type: learn, owner: intern,
+      title: "Пройди курс «Agile в Авито» и разберись, как Agile и Scrum работают в команде",
+      help: { kind: explain, kb_doc: processes-scrum, source_level: playbook } }
+  - { id: be-3.4, checklist_ref: "3.4", period: month1, order: 30, type: learn, owner: intern,
+      title: "Изучи SPT",
+      help: { kind: explain, kb_doc: spt, source_level: playbook } }
+  - { id: be-3.5, checklist_ref: "3.5", period: month1, order: 40, type: learn, owner: intern,
+      title: "Изучи Zero Bug Policy (ZBP)",
+      help: { kind: explain, kb_doc: zero-bug-policy, source_level: playbook } }
+  - { id: be-3.7, checklist_ref: "3.7", period: month1, order: 50, type: learn, owner: intern,
+      title: "Изучи информацию про API",
+      help: { kind: track_only } }
+  - { id: be-3.8, checklist_ref: "3.8", period: month1, order: 60, type: learn, owner: intern,
+      title: "Изучи Effective Go",
+      help: { kind: track_only } }
+  - { id: be-3.2, checklist_ref: "3.2", period: month1, order: 70, type: learn, owner: intern,
+      title: "Пройди курс «Микросервисная архитектура в Авито»",
+      help: { kind: track_only } }
+  - { id: be-3.3, checklist_ref: "3.3", period: month1, order: 80, type: setup, owner: intern,
+      title: "Установи сниффер запросов (bruno или charles) и LENS для Kubernetes",
+      help: { kind: explain, kb_doc: tool-sniffers, source_level: public } }
+  - { id: be-3.6, checklist_ref: "3.6", period: month1, order: 90, type: tell, owner: intern,
+      title: "Расскажи о Grafana",
+      help: { kind: explain, kb_doc: tool-grafana, source_level: public } }
+
+  # --- Месяц 2 ---
+  - { id: be-4.1, checklist_ref: "4.1", period: month2, order: 10, type: learn, owner: intern,
+      title: "Изучи демо Tech Platform",
+      help: { kind: track_only } }
+  - { id: be-4.2, checklist_ref: "4.2", period: month2, order: 20, type: learn, owner: intern,
+      title: "Изучи документацию по нагрузочному тестированию",
+      help: { kind: track_only } }
+  - { id: be-4.3, checklist_ref: "4.3", period: month2, order: 30, type: learn, owner: intern,
+      title: "Изучи инфомодель",
+      help: { kind: explain, kb_doc: term-infomodel, source_level: none } }
+
+  # --- Месяц 3 ---
+  - { id: be-5.1, checklist_ref: "5.1", period: month3, order: 10, type: tell, owner: intern,
+      title: "Расскажи о Redash",
+      help: { kind: track_only } }
+  - { id: be-5.2, checklist_ref: "5.2", period: month3, order: 20, type: learn, owner: intern,
+      title: "Пройди курс «Паттерны и практики написания кода»",
+      help: { kind: track_only } }
+  - { id: be-5.3, checklist_ref: "5.3", period: month3, order: 30, type: meet, owner: intern,
+      title: "Найди подходящее сообщество в Центре сообществ",
+      help: { kind: track_only } }
+  - { id: be-5.4, checklist_ref: "5.4", period: month3, order: 40, type: learn, owner: intern,
+      title: "Познакомься с процессом планирования плановых работ на сервисах («Шаталити»)",
+      help: { kind: track_only } }
+
+  # --- После 3 месяцев ---
+  - { id: be-6.7, checklist_ref: "6.7", period: after3, order: 50, type: learn, owner: intern,
+      title: "Изучи рекомендованные книги по Go, микросервисам, алгоритмам и высоконагруженным системам",
+      help: { kind: track_only } }

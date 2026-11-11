@@ -1,0 +1,88 @@
+# Синтетический тестовый трек Frontend (docs/08-intern-journey.md, раздел «Треки»).
+schema_version: 1
+id: frontend
+title: Frontend (тестовый трек)
+kind: direction
+extends: common
+synthetic: true
+disclaimer: >-
+  Тестовый трек: составлен командой по аналогии с Backend-чек-листом,
+  не является материалами Авито.
+source: "Синтетика команды; стек — PDF кейса; дизайн-система «Акита» — статья и доклад (05-avito-sources.md)"
+
+steps:
+  # --- Неделя 1 ---
+  - { id: fe-w1-10, period: week1, order: 10, type: learn, owner: intern,
+      title: "Изучи принципы разработки Авито",
+      help: { kind: explain, kb_doc: dev-principles, source_level: playbook } }
+  - { id: fe-w1-20, period: week1, order: 20, type: learn, owner: intern,
+      title: "Изучи «Авито в цифрах»",
+      help: { kind: explain, kb_doc: avito-in-numbers, source_level: case } }
+  - { id: fe-w1-30, period: week1, order: 30, type: access, owner: intern,
+      title: "Запроси доступ к репозиторию фронтенда команды",
+      help: { kind: access_request, resource: repo-frontend } }
+  - { id: fe-w1-40, period: week1, order: 40, type: setup, owner: intern,
+      title: "Настрой локальное окружение фронтенда (Node.js, менеджер пакетов, линтер)",
+      help: { kind: explain, kb_doc: frontend-setup, source_level: none } }
+  - { id: fe-w1-50, period: week1, order: 50, type: access, owner: intern,
+      title: "Попроси добавить тебя в канал фронтенд-сообщества",
+      help: { kind: access_request, resource: channel-frontend } }
+  - { id: fe-w1-60, period: week1, order: 60, type: learn, owner: intern,
+      title: "Посмотри интро дизайн-системы «Акита» для новых сотрудников",
+      help: { kind: explain, kb_doc: design-system-akita, source_level: public } }
+  - { id: fe-w1-70, period: week1, order: 70, type: tell, owner: intern,
+      title: "Расскажи о Sentry",
+      help: { kind: explain, kb_doc: tool-sentry, source_level: public } }
+
+  # --- Неделя 2 ---
+  - { id: fe-w2-10, period: week2, order: 10, type: learn, owner: intern,
+      title: "Изучи документацию по TypeScript и React",
+      help: { kind: track_only } }
+  - { id: fe-w2-20, period: week2, order: 20, type: learn, owner: intern,
+      title: "Разберись, как в команде устроены запросы к API: TanStack Query и схемы Zod",
+      help: { kind: explain, kb_doc: frontend-stack, source_level: case } }
+  - { id: fe-w2-30, period: week2, order: 30, type: learn, owner: intern,
+      title: "Изучи состояние на клиенте: Zustand",
+      help: { kind: track_only } }
+  - { id: fe-w2-40, period: week2, order: 40, type: learn, owner: intern,
+      title: "Изучи токены дизайн-системы: палитра → семантические токены, светлая и тёмная темы",
+      help: { kind: explain, kb_doc: design-system-akita, source_level: public } }
+  - { id: fe-w2-50, period: week2, order: 50, type: access, owner: intern,
+      title: "Запроси доступ к библиотеке компонентов в Figma",
+      help: { kind: access_request, resource: figma-library } }
+  - { id: fe-w2-60, period: week2, order: 60, type: learn, owner: intern,
+      title: "Изучи профили инженеров",
+      help: { kind: explain, kb_doc: engineer-profile-e1, source_level: playbook } }
+
+  # --- Недели 3–4 ---
+  - { id: fe-m1-10, period: month1, order: 10, type: learn, owner: intern,
+      title: "Пройди курс по Agile и Scrum; разберись, как работает твоя команда",
+      help: { kind: explain, kb_doc: processes-scrum, source_level: playbook } }
+  - { id: fe-m1-20, period: month1, order: 20, type: learn, owner: intern,
+      title: "Изучи паттерн форм дизайн-системы: fieldset, подпись → ошибка, диапазон «от — до»",
+      help: { kind: explain, kb_doc: design-system-akita, source_level: public } }
+  - { id: fe-m1-30, period: month1, order: 30, type: learn, owner: intern,
+      title: "Изучи Zero Bug Policy и SPT",
+      help: { kind: explain, kb_doc: zero-bug-policy, source_level: playbook } }
+  - { id: fe-m1-40, period: month1, order: 40, type: setup, owner: intern,
+      title: "Настрой отладку: DevTools браузера и сниффер (bruno или charles)",
+      help: { kind: explain, kb_doc: tool-sniffers, source_level: public } }
+  - { id: fe-m1-50, period: month1, order: 50, type: learn, owner: intern,
+      title: "Изучи тестирование компонентов (Vitest, Testing Library)",
+      help: { kind: track_only } }
+  - { id: fe-m1-60, period: month1, order: 60, type: tell, owner: intern,
+      title: "Расскажи о веб-метриках производительности",
+      help: { kind: explain, kb_doc: web-performance, source_level: public } }
+
+  # --- Месяц 2 ---
+  - { id: fe-m2-10, period: month2, order: 10, type: learn, owner: intern,
+      title: "Изучи основы доступности интерфейсов (a11y)",
+      help: { kind: track_only } }
+  - { id: fe-m2-20, period: month2, order: 20, type: org, owner: intern,
+      title: "Сделай первый вклад в общий компонент через PR владельцу (соседское соглашение)",
+      help: { kind: explain, kb_doc: neighborhood-agreement, source_level: playbook } }
+
+  # --- Месяц 3 ---
+  - { id: fe-m3-10, period: month3, order: 10, type: meet, owner: intern,
+      title: "Найди подходящее сообщество в Центре сообществ",
+      help: { kind: track_only } }
