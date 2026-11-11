@@ -1,0 +1,869 @@
+openapi: 3.0.3
+info:
+  title: AI-buddy API («Авиитик Витя»)
+  version: 1.0.0
+  description: |
+    HTTP API веб-интерфейса AI-buddy. Все данные синтетические, инструкции тестовые.
+    Сессия — cookie buddy_session (HttpOnly, SameSite=Lax). Изменяющие запросы — только POST
+    с проверкой Origin (same-origin). Каждый ответ содержит X-Request-Id.
+    Лишние поля в телах запросов отклоняются (400).
+servers:
+  - url: /
+security:
+  - session: []
+tags:
+  - {name: system}
+  - {name: auth}
+  - {name: chat, description: "09 §2, §9"}
+  - {name: actions, description: "Черновики и подтверждение, 10 §8.1"}
+  - {name: path, description: "S1, 11 раздел 1"}
+  - {name: time-off, description: "S3, 10"}
+  - {name: requests}
+  - {name: access, description: "S4, 11 раздел 3"}
+  - {name: kb, description: "S2, 11 раздел 2"}
+  - {name: mentor}
+  - {name: demo, description: "Только при DEMO_TOOLS_ENABLED=true, иначе 404"}
+
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      operationId: getHealthz
+      security: []
+      responses:
+        '200': {description: "PostgreSQL и Redis доступны", content: {application/json: {schema: {$ref: '#/components/schemas/Health'}}}}
+        '503': {description: "Зависимость недоступна", content: {application/json: {schema: {$ref: '#/components/schemas/Health'}}}}
+  /api/config:
+    get:
+      tags: [system]
+      operationId: getConfig
+      security: []
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/AppConfig'}}}}
+  /api/llm/health:
+    get:
+      tags: [system]
+      operationId: getLlmHealth
+      security: []
+      description: Провайдер, модель и статус. Ключ, заголовки и полный адрес не возвращаются. Пробный вызов не чаще раза в 30 с.
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/LlmHealth'}}}}
+
+  /api/auth/accounts:
+    get:
+      tags: [auth]
+      operationId: listTestAccounts
+      security: []
+      description: Тестовые учётки для экрана входа в один клик (имитация SSO).
+      responses:
+        '200':
+          description: OK
+          content: {application/json: {schema: {type: object, required: [items], properties: {items: {type: array, items: {$ref: '#/components/schemas/TestAccount'}}}}}}
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}
+      responses:
+        '200':
+          description: Сессия создана (Set-Cookie buddy_session)
+          content: {application/json: {schema: {$ref: '#/components/schemas/Me'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      responses:
+        '204': {description: "Сессия удалена"}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/me:
+    get:
+      tags: [auth]
+      operationId: getMe
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/Me'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/chat/messages:
+    post:
+      tags: [chat]
+      operationId: postChatMessage
+      description: |
+        Ровно одно из text / payload (иначе 400). Payload — кнопки: intent:, step:, resource:, clarify: (09 §2.1).
+        Повтор client_message_id в течение 10 мин возвращает сохранённый ответ без повторной обработки.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ChatMessageRequest'}}}
+      responses:
+        '200': {description: "Ответ бадди", content: {application/json: {schema: {$ref: '#/components/schemas/AgentReply'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/chat/history:
+    get:
+      tags: [chat]
+      operationId: getChatHistory
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200': {description: "Последние сообщения (замаскированные) и сохранённые ответы", content: {application/json: {schema: {$ref: '#/components/schemas/HistoryPage'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/actions:
+    post:
+      tags: [actions]
+      operationId: createAction
+      description: Проверка параметров и создание черновика (Redis, 15 мин). Один активный черновик отгула на пользователя и один черновик доступа на пару «пользователь — ресурс».
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ActionCreateRequest'}}}
+      responses:
+        '201': {description: "Черновик создан", content: {application/json: {schema: {$ref: '#/components/schemas/ActionCreated'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/actions/{action_id}:
+    get:
+      tags: [actions]
+      operationId: getAction
+      parameters: [{$ref: '#/components/parameters/ActionId'}]
+      responses:
+        '200': {description: "Состояние черновика для карточек в истории чата", content: {application/json: {schema: {$ref: '#/components/schemas/ActionView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/actions/{action_id}/confirm:
+    post:
+      tags: [actions]
+      operationId: confirmAction
+      description: Единственный путь записи во внешний сервис (AG-05). Повтор confirm подтверждённого черновика → 200 с тем же результатом.
+      parameters: [{$ref: '#/components/parameters/ActionId'}]
+      responses:
+        '200': {description: "Заявка создана", content: {application/json: {schema: {$ref: '#/components/schemas/ConfirmResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '410': {$ref: '#/components/responses/Gone'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/actions/{action_id}/cancel:
+    post:
+      tags: [actions]
+      operationId: cancelAction
+      parameters: [{$ref: '#/components/parameters/ActionId'}]
+      responses:
+        '200': {description: "Черновик отменён", content: {application/json: {schema: {$ref: '#/components/schemas/ActionView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410': {$ref: '#/components/responses/Gone'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+
+  /api/path:
+    get:
+      tags: [path]
+      operationId: getPath
+      description: Сначала синхронизирует заявки S4 (11 §3.6), затем считает этап, «Что дальше», прогресс.
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/PathView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/path/steps/{step_id}:
+    get:
+      tags: [path]
+      operationId: getPathStep
+      parameters: [{$ref: '#/components/parameters/StepId'}]
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/PathStep'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/path/steps/{step_id}/status:
+    post:
+      tags: [path]
+      operationId: setPathStepStatus
+      description: Причина выводится сервером (done → user_mark_done; in_progress из done → user_reopen; из not_started → user_start). Шаг с заявкой вручную не закрывается (409).
+      parameters: [{$ref: '#/components/parameters/StepId'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/StepStatusUpdate'}}}
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/StepStatusResult'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /api/time-off/config:
+    get:
+      tags: [time-off]
+      operationId: getTimeOffConfig
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/TimeOffConfig'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /api/requests:
+    get:
+      tags: [requests]
+      operationId: listRequests
+      description: История заявок из локальной копии (отгулы и доступы), created_at по убыванию. Наставнику — только employee_id своего стажёра, иначе 404.
+      parameters:
+        - {name: kind, in: query, schema: {$ref: '#/components/schemas/RequestKind'}}
+        - {name: scope, in: query, schema: {type: string, enum: [upcoming, all], default: all}}
+        - {name: employee_id, in: query, schema: {$ref: '#/components/schemas/UserId'}}
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/RequestList'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/access/resources:
+    get:
+      tags: [access]
+      operationId: listAccessResources
+      description: Ресурсы, которые роль может запросить (запрещённые не перечисляются).
+      responses:
+        '200':
+          description: OK
+          content: {application/json: {schema: {type: object, required: [items], properties: {items: {type: array, items: {$ref: '#/components/schemas/AccessResourceView'}}}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /api/kb/{slug}:
+    get:
+      tags: [kb]
+      operationId: getKbDoc
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9-]{2,60}$'}}
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/KbDoc'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/feedback:
+    post:
+      tags: [kb]
+      operationId: postFeedback
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FeedbackRequest'}}}
+      responses:
+        '204': {description: "Принято (повтор перезаписывает оценку)"}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/client-events:
+    post:
+      tags: [system]
+      operationId: postClientEvent
+      description: |
+        События, которые происходят только на клиенте («Скопировать», «Сообщить о расхождении», клик «Что дальше»).
+        Имя — из белого списка; остальные поля сервер берёт из сохранённого ответа и сессии.
+        doc_conflict_reported записывается не больше одного раза на reply_id.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ClientEventRequest'}}}
+      responses:
+        '204': {description: "Принято"}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/mentor/interns:
+    get:
+      tags: [mentor]
+      operationId: listMentorInterns
+      responses:
+        '200': {description: "Свои стажёры", content: {application/json: {schema: {$ref: '#/components/schemas/MentorInternList'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/mentor/interns/{user_id}/path:
+    get:
+      tags: [mentor]
+      operationId: getMentorInternPath
+      parameters:
+        - {name: user_id, in: path, required: true, schema: {$ref: '#/components/schemas/UserId'}}
+      responses:
+        '200': {description: "Путь стажёра, read_only=true", content: {application/json: {schema: {$ref: '#/components/schemas/PathView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/mentor/access-requests:
+    get:
+      tags: [mentor]
+      operationId: listMentorAccessRequests
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [pending, approved, rejected], default: pending}}
+      responses:
+        '200': {description: "Входящие заявки своих стажёров", content: {application/json: {schema: {$ref: '#/components/schemas/RequestList'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/mentor/access-requests/{request_id}/decision:
+    post:
+      tags: [mentor]
+      operationId: decideAccessRequest
+      parameters:
+        - {name: request_id, in: path, required: true, schema: {type: string, pattern: '^ACC-\d{6}$'}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DecisionRequest'}}}
+      responses:
+        '200': {description: "Решение принято (повтор с тем же ключом — тот же ответ)", content: {application/json: {schema: {$ref: '#/components/schemas/RequestView'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /api/demo/reset:
+    post:
+      tags: [demo]
+      operationId: resetDemo
+      description: Сначала сброс имитаций (MCP_MOCKS_ADMIN_URL), затем схемы app и ключей Redis (кроме сессий). События не удаляются.
+      responses:
+        '204': {description: "Демо-данные возвращены к сидам"}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/demo/flags:
+    get:
+      tags: [demo]
+      operationId: listDemoFlags
+      responses:
+        '200': {description: "Флаги из белого списка", content: {application/json: {schema: {$ref: '#/components/schemas/DemoFlagList'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    post:
+      tags: [demo]
+      operationId: setDemoFlag
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DemoFlagUpdate'}}}
+      responses:
+        '200': {description: "OK", content: {application/json: {schema: {$ref: '#/components/schemas/DemoFlag'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+components:
+  securitySchemes:
+    session: {type: apiKey, in: cookie, name: buddy_session}
+
+  parameters:
+    ActionId: {name: action_id, in: path, required: true, schema: {type: string, format: uuid}}
+    StepId: {name: step_id, in: path, required: true, schema: {type: string, pattern: '^[a-z]{2}-[a-z0-9.-]{1,20}$'}}
+
+  responses:
+    BadRequest: {description: "Неверный запрос", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Unauthorized: {description: "Нет сессии или истекла", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Forbidden: {description: "Нет прав или неверный Origin", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    NotFound: {description: "Не найдено или чужое (существование не раскрывается)", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Conflict: {description: "Конфликт состояния", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Gone: {description: "Черновик истёк, отменён или заменён", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Unprocessable: {description: "Ошибки проверки по полям", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    TooManyRequests: {description: "Больше 20 сообщений или действий в минуту", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    Unavailable: {description: "Сервис недоступен, можно повторить", content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+
+  schemas:
+    UserId: {type: string, pattern: '^u-[a-z0-9-]{1,40}$'}
+    Role: {type: string, enum: [intern, mentor]}
+    MascotState: {type: string, enum: [hello, done, oops, ask_mentor]}
+    StepStatus: {type: string, enum: [not_started, in_progress, waiting, done]}
+    PeriodId: {type: string, enum: [week1, week2, month1, month2, month3, after3]}
+    RequestKind: {type: string, enum: [time_off, access]}
+    AccessLevel: {type: string, enum: [read, write, admin]}
+    Policy: {type: string, enum: [auto, mentor, timer]}
+    IsoDate: {type: string, format: date}
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: >-
+            VALIDATION_FAILED, BAD_REQUEST, UNAUTHORIZED, BAD_ORIGIN, PERMISSION_DENIED, NOT_FOUND,
+            ACTION_EXPIRED, ACTION_CANCELLED, ACTION_REPLACED, STATUS_CONFLICT, TRANSITION_NOT_ALLOWED,
+            DUPLICATE_ACTIVE, ALREADY_DECIDED, IDEMPOTENCY_CONFLICT, RATE_LIMITED, UNAVAILABLE, TIMEOUT, INTERNAL
+        message: {type: string, description: "Текст для пользователя"}
+        retryable: {type: boolean}
+        errors: {type: array, items: {$ref: '#/components/schemas/FieldError'}}
+        current_status: {$ref: '#/components/schemas/StepStatus'}
+        existing: {$ref: '#/components/schemas/RequestView'}
+        request: {$ref: '#/components/schemas/RequestView'}
+        title: {type: string, description: "Заголовок закрытого документа (403 на /api/kb, только при disclose_title)"}
+        reply: {$ref: '#/components/schemas/AgentReply'}
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field: {type: string, enum: [date_from, date_to, range, resource_id, text, payload]}
+        code: {type: string, description: "REQUIRED, INVALID_DATE, DATE_IN_PAST, TOO_FAR, WEEKEND_DATE, RANGE_REVERSED, TOO_LONG, OVERLAP и др."}
+        message: {type: string}
+        params: {type: object, additionalProperties: true}
+
+    Health:
+      type: object
+      required: [status, postgres, redis]
+      properties:
+        status: {type: string, enum: [ok, degraded]}
+        postgres: {type: boolean}
+        redis: {type: boolean}
+    AppConfig:
+      type: object
+      required: [poll_interval_ms, demo_tools_enabled, timezone, llm_provider]
+      properties:
+        poll_interval_ms: {type: integer}
+        demo_tools_enabled: {type: boolean}
+        timezone: {type: string, example: Europe/Moscow}
+        llm_provider: {type: string, enum: [demo, openai_compatible]}
+    LlmHealth:
+      type: object
+      required: [provider, status, checked_at]
+      properties:
+        provider: {type: string, enum: [demo, openai_compatible]}
+        model: {type: string, nullable: true}
+        status: {type: string, enum: [ok, degraded, auth_error, misconfigured, circuit_open, disabled]}
+        last_error_code: {type: string, nullable: true}
+        checked_at: {type: string, format: date-time}
+
+    TrackRef:
+      type: object
+      required: [id, title, synthetic]
+      properties:
+        id: {type: string}
+        title: {type: string}
+        synthetic: {type: boolean}
+        disclaimer: {type: string, nullable: true}
+    Me:
+      type: object
+      required: [user_id, display_name, role]
+      properties:
+        user_id: {$ref: '#/components/schemas/UserId'}
+        display_name: {type: string}
+        role: {$ref: '#/components/schemas/Role'}
+        track: {allOf: [{$ref: '#/components/schemas/TrackRef'}], nullable: true}
+    TestAccount:
+      type: object
+      required: [user_id, display_name, role, description]
+      properties:
+        user_id: {$ref: '#/components/schemas/UserId'}
+        display_name: {type: string}
+        role: {$ref: '#/components/schemas/Role'}
+        description: {type: string, example: "Backend, неделя 1 — основной сценарий"}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [user_id]
+      properties:
+        user_id: {$ref: '#/components/schemas/UserId'}
+
+    ChatMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [client_message_id]
+      description: Ровно одно из text / payload (проверяется в обработчике, AG-25).
+      properties:
+        client_message_id: {type: string, format: uuid}
+        text: {type: string, minLength: 1, maxLength: 1000}
+        payload: {type: string, pattern: '^(intent|step|resource|clarify):[a-z0-9._-]{1,64}$'}
+    AgentReply:
+      type: object
+      required: [reply_id, client_message_id, mode, intent, mascot_state, text, sources, actions, notices]
+      properties:
+        reply_id: {type: string, format: uuid}
+        client_message_id: {type: string, format: uuid}
+        mode: {type: string, enum: [demo, llm, fallback]}
+        intent: {type: string, enum: [help, my_path, step_explain, step_done, kb_question, time_off, access_request, my_requests, ask_mentor, out_of_scope, unknown]}
+        mascot_state: {$ref: '#/components/schemas/MascotState'}
+        text: {type: string, description: "Только текст; маркеры [n] ссылаются на sources (AG-26)"}
+        sources: {type: array, items: {$ref: '#/components/schemas/Source'}}
+        actions: {type: array, items: {$ref: '#/components/schemas/ReplyAction'}}
+        pending_action: {allOf: [{$ref: '#/components/schemas/PendingAction'}], nullable: true}
+        escalation: {allOf: [{$ref: '#/components/schemas/Escalation'}], nullable: true}
+        notices:
+          type: array
+          items: {type: string, enum: [simplified_mode, llm_auth_error, llm_misconfigured, synthetic_track, pii_masked, restricted_doc_exists, doc_conflict, overlap_unchecked]}
+    Source:
+      type: object
+      required: [n, slug, title, url, label, source_level]
+      properties:
+        n: {type: integer, minimum: 1}
+        slug: {type: string}
+        title: {type: string}
+        url: {type: string, pattern: '^/kb/[a-z0-9-]+$'}
+        label: {type: string, enum: [test_instruction, test_description]}
+        source_level: {type: string, enum: [playbook, case, public, team, none]}
+        dated: {type: string, nullable: true}
+    ReplyAction:
+      type: object
+      required: [type, label]
+      properties:
+        type: {type: string, enum: [quick_reply, open_form, confirm, cancel, edit, mark_done, request_access, copy, link, retry, feedback]}
+        label: {type: string}
+        payload: {type: string, description: "Для quick_reply — по грамматике 09 §2.1"}
+        value: {type: string, enum: [up, down], description: "Для feedback"}
+        action_id: {type: string, format: uuid, description: "Для confirm, cancel, edit, retry"}
+        step_id: {type: string, description: "Для mark_done"}
+        form: {type: string, enum: [time_off]}
+        prefill: {allOf: [{$ref: '#/components/schemas/DateRange'}], nullable: true}
+        existing: {type: array, maxItems: 3, items: {$ref: '#/components/schemas/TimeOffBrief'}}
+        text: {type: string, description: "Для copy — текст в буфер обмена"}
+        copy_event: {type: string, enum: [escalation_copied, doc_conflict_reported], description: "Какое событие отправить в /api/client-events после копирования"}
+        url: {type: string, description: "Для link — путь внутри приложения"}
+    DateRange:
+      type: object
+      required: [date_from, date_to]
+      properties:
+        date_from: {$ref: '#/components/schemas/IsoDate'}
+        date_to: {$ref: '#/components/schemas/IsoDate'}
+    TimeOffBrief:
+      type: object
+      required: [request_id, date_from, date_to]
+      properties:
+        request_id: {type: string, pattern: '^ABS-\d{6}$'}
+        date_from: {$ref: '#/components/schemas/IsoDate'}
+        date_to: {$ref: '#/components/schemas/IsoDate'}
+    PendingAction:
+      type: object
+      required: [action_id, kind, state, expires_at, summary]
+      properties:
+        action_id: {type: string, format: uuid}
+        kind: {$ref: '#/components/schemas/RequestKind'}
+        state: {type: string, enum: [active, confirming, confirmed, cancelled, replaced, expired]}
+        expires_at: {type: string, format: date-time}
+        summary: {$ref: '#/components/schemas/ActionSummary'}
+    ActionSummary:
+      type: object
+      description: time_off — даты и рабочие дни; access — ресурс, уровень, согласующий, правило, обоснование.
+      properties:
+        date_from: {$ref: '#/components/schemas/IsoDate'}
+        date_to: {$ref: '#/components/schemas/IsoDate'}
+        working_days: {type: integer, minimum: 1, maximum: 5}
+        resource_id: {type: string}
+        title: {type: string}
+        access_level: {$ref: '#/components/schemas/AccessLevel'}
+        approver: {type: string, nullable: true}
+        effective_policy: {$ref: '#/components/schemas/Policy'}
+        timer_minutes: {type: integer, nullable: true}
+        step_id: {type: string, nullable: true}
+        justification: {type: string, maxLength: 200}
+    Escalation:
+      type: object
+      required: [reason, draft]
+      properties:
+        reason: {type: string, enum: [explicit, no_answer, no_source_term, permission_denied, not_understood, negative_feedback, mentor_topic]}
+        draft: {type: string, maxLength: 1500}
+    HistoryItem:
+      type: object
+      required: [id, ts, author]
+      properties:
+        id: {type: string, format: uuid}
+        ts: {type: string, format: date-time}
+        author: {type: string, enum: [user, bot]}
+        text: {type: string, nullable: true, description: "Замаскированный текст пользователя"}
+        button_label: {type: string, nullable: true, description: "Подпись нажатой кнопки вместо payload"}
+        reply: {allOf: [{$ref: '#/components/schemas/AgentReply'}], nullable: true}
+    HistoryPage:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/HistoryItem'}}
+
+    ActionCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, params]
+      properties:
+        kind: {$ref: '#/components/schemas/RequestKind'}
+        params:
+          type: object
+          additionalProperties: false
+          description: time_off — date_from, date_to; access — resource_id. step_id и employee_id не принимаются (сервер определяет сам).
+          properties:
+            date_from: {type: string, maxLength: 10}
+            date_to: {type: string, maxLength: 10}
+            resource_id: {type: string, pattern: '^[a-z][a-z0-9-]{1,40}$'}
+    ActionCreated:
+      type: object
+      required: [pending_action, notices]
+      properties:
+        pending_action: {$ref: '#/components/schemas/PendingAction'}
+        notices: {type: array, items: {type: string, enum: [overlap_unchecked]}}
+    ActionView:
+      type: object
+      required: [action_id, kind, state, expires_at, summary]
+      properties:
+        action_id: {type: string, format: uuid}
+        kind: {$ref: '#/components/schemas/RequestKind'}
+        state: {type: string, enum: [active, confirming, confirmed, cancelled, replaced, expired], description: "expired вычисляется из active и expires_at"}
+        expires_at: {type: string, format: date-time}
+        summary: {$ref: '#/components/schemas/ActionSummary'}
+        result: {allOf: [{$ref: '#/components/schemas/RequestView'}], nullable: true}
+    ConfirmResponse:
+      type: object
+      required: [result, reply]
+      properties:
+        result: {$ref: '#/components/schemas/RequestView'}
+        reply: {$ref: '#/components/schemas/AgentReply'}
+
+    RequestView:
+      type: object
+      description: Единый вид заявки (отгул или доступ) для карточек, истории, «Моих заявок» и «Входящих».
+      required: [kind, request_id, status, created_at]
+      properties:
+        kind: {$ref: '#/components/schemas/RequestKind'}
+        request_id: {type: string, pattern: '^(ABS|ACC)-\d{6}$'}
+        status: {type: string, enum: [registered, cancelled, pending, approved, rejected]}
+        created_at: {type: string, format: date-time}
+        date_from: {$ref: '#/components/schemas/IsoDate'}
+        date_to: {$ref: '#/components/schemas/IsoDate'}
+        working_days: {type: integer}
+        resource_id: {type: string}
+        resource_title: {type: string}
+        access_level: {$ref: '#/components/schemas/AccessLevel'}
+        approver: {type: string, nullable: true}
+        justification: {type: string, nullable: true}
+        policy: {$ref: '#/components/schemas/Policy'}
+        step_id: {type: string, nullable: true}
+        step_title: {type: string, nullable: true}
+        auto_approve_at: {type: string, format: date-time, nullable: true}
+        decided_by: {type: string, enum: [auto, timer, mentor], nullable: true}
+        reject_reason: {type: string, enum: [not_needed, other_resource, discuss_1on1], nullable: true}
+        employee:
+          type: object
+          nullable: true
+          description: Только в ответах наставнику
+          required: [user_id, display_name]
+          properties:
+            user_id: {$ref: '#/components/schemas/UserId'}
+            display_name: {type: string}
+    RequestList:
+      type: object
+      required: [items, total]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/RequestView'}}
+        total: {type: integer}
+        stale: {type: boolean, description: "Сервис недоступен — показаны данные локальной копии"}
+
+    PathView:
+      type: object
+      required: [employee, today, start_date, day, state, current_period, periods, steps, next_step, waiting, progress, read_only, has_pending_requests, stale_requests]
+      properties:
+        employee:
+          type: object
+          required: [user_id, display_name, track]
+          properties:
+            user_id: {$ref: '#/components/schemas/UserId'}
+            display_name: {type: string}
+            track: {$ref: '#/components/schemas/TrackRef'}
+        today: {$ref: '#/components/schemas/IsoDate'}
+        start_date: {$ref: '#/components/schemas/IsoDate'}
+        day: {type: integer}
+        state: {type: string, enum: [ready, pre_start, only_waiting, finished]}
+        current_period: {$ref: '#/components/schemas/PeriodId'}
+        periods: {type: array, items: {$ref: '#/components/schemas/Period'}}
+        steps: {type: array, items: {$ref: '#/components/schemas/PathStep'}}
+        next_step: {allOf: [{$ref: '#/components/schemas/NextStep'}], nullable: true}
+        waiting: {type: array, items: {type: string}}
+        progress: {$ref: '#/components/schemas/Progress'}
+        read_only: {type: boolean}
+        has_pending_requests: {type: boolean}
+        stale_requests: {type: boolean}
+    Period:
+      type: object
+      required: [id, title, from_day, state, done, total]
+      properties:
+        id: {$ref: '#/components/schemas/PeriodId'}
+        title: {type: string}
+        from_day: {type: integer}
+        to_day: {type: integer, nullable: true}
+        state: {type: string, enum: [past, current, future]}
+        done: {type: integer}
+        total: {type: integer}
+    PathStep:
+      type: object
+      required: [step_id, period, order, title, type, help, status, synthetic]
+      properties:
+        step_id: {type: string}
+        checklist_ref: {type: string, nullable: true}
+        period: {$ref: '#/components/schemas/PeriodId'}
+        order: {type: integer}
+        title: {type: string}
+        type: {type: string, enum: [learn, setup, access, meet, tell, org]}
+        help:
+          type: object
+          required: [kind]
+          properties:
+            kind: {type: string, enum: [explain, access_request, ask_mentor, track_only]}
+            kb_doc: {type: string}
+            resource: {type: string}
+        status: {$ref: '#/components/schemas/StepStatus'}
+        synthetic: {type: boolean}
+        request:
+          type: object
+          nullable: true
+          required: [request_id, status]
+          properties:
+            request_id: {type: string, pattern: '^ACC-\d{6}$'}
+            status: {type: string, enum: [pending, approved, rejected]}
+            auto_approve_at: {type: string, format: date-time, nullable: true}
+            reject_reason: {type: string, nullable: true}
+    NextStep:
+      type: object
+      required: [step_id, reason]
+      properties:
+        step_id: {type: string}
+        reason: {type: string, enum: [overdue, current, ahead]}
+    Progress:
+      type: object
+      required: [period_done, period_total, overall_done, overall_total]
+      properties:
+        period_done: {type: integer}
+        period_total: {type: integer}
+        overall_done: {type: integer}
+        overall_total: {type: integer}
+    StepStatusUpdate:
+      type: object
+      additionalProperties: false
+      required: [status, expected_status, idempotency_key]
+      properties:
+        status: {type: string, enum: [in_progress, done]}
+        expected_status: {$ref: '#/components/schemas/StepStatus'}
+        idempotency_key: {type: string, format: uuid}
+    StepStatusResult:
+      type: object
+      required: [step, changed, path_summary]
+      properties:
+        step: {$ref: '#/components/schemas/PathStep'}
+        changed: {type: boolean}
+        path_summary:
+          type: object
+          required: [state, next_step, waiting, progress]
+          properties:
+            state: {type: string, enum: [ready, pre_start, only_waiting, finished]}
+            next_step: {allOf: [{$ref: '#/components/schemas/NextStep'}], nullable: true}
+            waiting: {type: array, items: {type: string}}
+            progress: {$ref: '#/components/schemas/Progress'}
+
+    TimeOffConfig:
+      type: object
+      required: [today, max_date, max_working_days, horizon_days, weekend_days]
+      properties:
+        today: {$ref: '#/components/schemas/IsoDate'}
+        max_date: {$ref: '#/components/schemas/IsoDate'}
+        max_working_days: {type: integer, example: 5}
+        horizon_days: {type: integer, example: 90}
+        weekend_days: {type: array, items: {type: integer, minimum: 1, maximum: 7}, example: [6, 7]}
+
+    AccessResourceView:
+      type: object
+      required: [resource_id, title, kind, description, access_level, effective_policy]
+      properties:
+        resource_id: {type: string}
+        title: {type: string}
+        kind: {type: string, enum: [channel, space, repo, tool, database]}
+        description: {type: string}
+        access_level: {$ref: '#/components/schemas/AccessLevel'}
+        approver: {type: string, nullable: true, description: "Подпись согласующего (имитация)"}
+        effective_policy: {$ref: '#/components/schemas/Policy'}
+        timer_minutes: {type: integer, nullable: true}
+
+    KbDoc:
+      type: object
+      required: [slug, title, kind, summary, body_md, label, source_level, url, updated_at, conflicts_with]
+      properties:
+        slug: {type: string}
+        title: {type: string}
+        kind: {type: string, enum: [process, term, tool, guide, org]}
+        summary: {type: string}
+        body_md: {type: string, description: "Рендерится через санитайзер, без сырого HTML"}
+        label: {type: string, enum: [test_instruction, test_description]}
+        source_level: {type: string, enum: [playbook, case, public, team, none]}
+        dated: {type: string, nullable: true}
+        url: {type: string}
+        updated_at: {type: string, format: date-time}
+        conflicts_with: {type: array, items: {type: string}}
+    FeedbackRequest:
+      type: object
+      additionalProperties: false
+      required: [reply_id, value]
+      properties:
+        reply_id: {type: string, format: uuid}
+        value: {type: string, enum: [up, down]}
+    ClientEventRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, enum: [escalation_copied, doc_conflict_reported, next_step_clicked]}
+        reply_id: {type: string, format: uuid, description: "Обязателен для escalation_copied и doc_conflict_reported"}
+        step_id: {type: string, description: "Обязателен для next_step_clicked"}
+
+    MentorIntern:
+      type: object
+      required: [user_id, display_name, track, current_period, day, progress, pending_access_requests, upcoming_time_off]
+      properties:
+        user_id: {$ref: '#/components/schemas/UserId'}
+        display_name: {type: string}
+        track: {$ref: '#/components/schemas/TrackRef'}
+        current_period: {$ref: '#/components/schemas/PeriodId'}
+        day: {type: integer}
+        progress: {$ref: '#/components/schemas/Progress'}
+        pending_access_requests: {type: integer}
+        upcoming_time_off: {type: array, maxItems: 2, items: {$ref: '#/components/schemas/TimeOffBrief'}}
+    MentorInternList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/MentorIntern'}}
+    DecisionRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, idempotency_key]
+      properties:
+        decision: {type: string, enum: [approve, reject]}
+        reject_reason: {type: string, enum: [not_needed, other_resource, discuss_1on1], description: "Обязательна при reject и запрещена при approve"}
+        idempotency_key: {type: string, format: uuid}
+
+    DemoFlag:
+      type: object
+      required: [name, value, allowed_values]
+      properties:
+        name: {type: string}
+        value: {type: string}
+        allowed_values: {type: array, items: {type: string}}
+    DemoFlagList:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/DemoFlag'}}
+    DemoFlagUpdate:
+      type: object
+      additionalProperties: false
+      required: [name, value]
+      properties:
+        name: {type: string, enum: [mock_absences_fault, access_mentor_approval]}
+        value: {type: string, description: "mock_absences_fault: off | unavailable (| slow, если успели); access_mentor_approval: on | off"}

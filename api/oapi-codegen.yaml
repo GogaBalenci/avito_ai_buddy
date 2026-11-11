@@ -1,0 +1,10 @@
+# oapi-codegen v2: types + chi server interface from api/openapi.yaml (12 §6).
+# Regenerate: sh scripts/gen.sh   (CI checks that the generated code is up to date)
+package: api
+output: internal/gen/api/api.gen.go
+generate:
+  models: true
+  chi-server: true
+  embedded-spec: true
+output-options:
+  skip-prune: true
