@@ -81,7 +81,9 @@ func ensureTemplate(ctx context.Context, admin string) (string, error) {
 	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtext('pgtest-template'))`); err != nil {
 		return "", err
 	}
-	defer func() { _, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(hashtext('pgtest-template'))`) }()
+	defer func() {
+		_, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(hashtext('pgtest-template'))`)
+	}()
 	var exists bool
 	if err := conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)`, tmpl).Scan(&exists); err != nil {
 		return "", err

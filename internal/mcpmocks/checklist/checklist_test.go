@@ -26,9 +26,9 @@ func setup(t *testing.T) *mcpclient.MCP {
 }
 
 type step struct {
-	StepID string `json:"step_id"`
-	Owner  string `json:"owner"`
-	Status string `json:"status"`
+	StepID string  `json:"step_id"`
+	Owner  string  `json:"owner"`
+	Status string  `json:"status"`
 	Source *string `json:"status_source"`
 }
 
@@ -103,9 +103,9 @@ func TestSetStepStatus(t *testing.T) {
 	key := uuid.NewString()
 	in := map[string]any{"actor": intern, "step_id": "be-1.11", "status": "done", "reason": "user_mark_done", "expected_status": "in_progress", "idempotency_key": key}
 	var out struct {
-		Step     step `json:"step"`
-		Changed  bool `json:"changed"`
-		Replay   bool `json:"idempotent_replay"`
+		Step    step `json:"step"`
+		Changed bool `json:"changed"`
+		Replay  bool `json:"idempotent_replay"`
 	}
 	if err := c.Call(ctx, "checklist", "set_step_status", in, &out); err != nil || !out.Changed || out.Step.Status != "done" || *out.Step.Source != "user" {
 		t.Fatalf("C-03: %v %+v", err, out)
@@ -132,7 +132,9 @@ func TestSetStepStatus(t *testing.T) {
 		t.Fatalf("other track: %v", err)
 	}
 	// no-op: start an already in-progress step
-	var noop struct{ Changed bool `json:"changed"` }
+	var noop struct {
+		Changed bool `json:"changed"`
+	}
 	_ = set(c, intern, map[string]any{"step_id": "be-1.12", "status": "in_progress", "reason": "user_start"})
 	if err := c.Call(ctx, "checklist", "set_step_status", map[string]any{"actor": intern, "step_id": "be-1.12", "status": "in_progress", "reason": "user_start", "idempotency_key": uuid.NewString()}, &noop); err != nil || noop.Changed {
 		t.Fatalf("no-op: %v %+v", err, noop)
@@ -197,7 +199,9 @@ func TestParallelMarkDone(t *testing.T) {
 func TestGetStep(t *testing.T) {
 	c := setup(t)
 	ctx := context.Background()
-	var out struct{ Step step `json:"step"` }
+	var out struct {
+		Step step `json:"step"`
+	}
 	if err := c.Call(ctx, "checklist", "get_step", map[string]any{"actor": fe, "step_id": "fe-w1-50"}, &out); err != nil || out.Step.Status != "not_started" {
 		t.Fatalf("%v %+v", err, out)
 	}

@@ -30,7 +30,10 @@ func WithActor(ctx context.Context, a actor.Actor) context.Context {
 }
 
 // Actor returns the session actor.
-func Actor(ctx context.Context) (actor.Actor, bool) { a, ok := ctx.Value(keyActor).(actor.Actor); return a, ok }
+func Actor(ctx context.Context) (actor.Actor, bool) {
+	a, ok := ctx.Value(keyActor).(actor.Actor)
+	return a, ok
+}
 
 // WithSessionID stores the session id (for events).
 func WithSessionID(ctx context.Context, id string) context.Context {

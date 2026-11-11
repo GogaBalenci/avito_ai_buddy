@@ -10,16 +10,16 @@ import (
 func TestCheckAllCombinations(t *testing.T) {
 	statuses := []string{NotStarted, InProgress, Waiting, Done}
 	allowed := map[string]bool{ // reason|from|to|help
-		UserStart + "|" + NotStarted + "|" + InProgress:      true,
-		UserMarkDone + "|" + NotStarted + "|" + Done:         true,
-		UserMarkDone + "|" + InProgress + "|" + Done:         true,
-		UserReopen + "|" + Done + "|" + InProgress:           true,
-		AccessPending + "|" + NotStarted + "|" + Waiting:     true,
-		AccessPending + "|" + InProgress + "|" + Waiting:     true,
-		AccessApproved + "|" + NotStarted + "|" + Done:       true,
-		AccessApproved + "|" + InProgress + "|" + Done:       true,
-		AccessApproved + "|" + Waiting + "|" + Done:          true,
-		AccessRejected + "|" + Waiting + "|" + InProgress:    true,
+		UserStart + "|" + NotStarted + "|" + InProgress:   true,
+		UserMarkDone + "|" + NotStarted + "|" + Done:      true,
+		UserMarkDone + "|" + InProgress + "|" + Done:      true,
+		UserReopen + "|" + Done + "|" + InProgress:        true,
+		AccessPending + "|" + NotStarted + "|" + Waiting:  true,
+		AccessPending + "|" + InProgress + "|" + Waiting:  true,
+		AccessApproved + "|" + NotStarted + "|" + Done:    true,
+		AccessApproved + "|" + InProgress + "|" + Done:    true,
+		AccessApproved + "|" + Waiting + "|" + Done:       true,
+		AccessRejected + "|" + Waiting + "|" + InProgress: true,
 	}
 	refused, ok := 0, 0
 	for reason := range rules {

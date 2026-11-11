@@ -123,7 +123,9 @@ func Sort(periods []Period, steps []Step, commonTrack string) {
 	})
 }
 
-func open(s Step) bool { return s.Status == fsm.NotStarted || s.Status == fsm.InProgress || s.Status == "" }
+func open(s Step) bool {
+	return s.Status == fsm.NotStarted || s.Status == fsm.InProgress || s.Status == ""
+}
 
 // Compute builds the view. Only owner=intern steps are visible (11 §1.5.2).
 func Compute(periods []Period, all []Step, start, today time.Time, commonTrack string) View {
