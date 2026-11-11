@@ -22,10 +22,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/demo"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/employees"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/events"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/flags"
@@ -63,6 +65,9 @@ type Deps struct {
 	Guard        *guard.Guard
 	Health       http.Handler
 	Path         *path.Service
+	Actions      *actions.Service
+	Seeder       *demo.Seeder
+	AdminHTTP    *http.Client // calls MCP_MOCKS_ADMIN_URL (demo only)
 	// Sync brings access requests of an intern up to date (S4, 11 §3.6); nil until S4.
 	Sync func(ctx context.Context, userID string) error
 }

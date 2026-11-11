@@ -12,11 +12,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/GogaBalenci/avito_ai_buddy/content"
 	"github.com/GogaBalenci/avito_ai_buddy/contracts"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
@@ -103,7 +105,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		a.Close()
 		return nil, err
 	}
-	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people, Getenv: cfg.Getenv}
+	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people, Getenv: cfg.Getenv,
+		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff}}
 	if seeded, err := seeder.SeedIfEmpty(ctx); err != nil {
 		a.Close()
 		return nil, fmt.Errorf("seeds: %w", err)
@@ -117,6 +120,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	emp := &store.Employees{Pool: pool}
 	tools := &mcpclient.MCP{URLs: cfg.MCPURLs, Timeout: cfg.MCPTimeout, Log: log}
 	g := &guard.Guard{Employees: emp}
+	rec := &events.PG{Pool: pool, Clock: clk}
 	srv := &httpapi.Server{Deps: httpapi.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: a.Redis, Clock: clk,
 		Sessions:     &auth.Sessions{Redis: a.Redis, Employees: emp, Clock: clk, TTL: cfg.SessionTTL, Secure: cfg.CookieSecure},
@@ -124,12 +128,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		Employees:    emp,
 		Accounts:     emp,
 		AccountNotes: notes,
-		Events:       &events.PG{Pool: pool, Clock: clk},
+		Events:       rec,
 		Flags:        &flags.PG{Pool: pool},
 		Tools:        tools,
 		Guard:        g,
 		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
-		Health:       health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
+		Actions: &actions.Service{Store: &actions.Store{Redis: a.Redis, Clock: clk}, Tools: tools, Guard: g, Pool: pool,
+			Events: rec, Clock: clk},
+		Seeder:    seeder,
+		AdminHTTP: &http.Client{Timeout: 10 * time.Second},
+		Health:    health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
 	}}
 	h, err := httpapi.Handler(srv)
 	if err != nil {

@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/GogaBalenci/avito_ai_buddy/content"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
@@ -68,7 +70,8 @@ func build(t *testing.T, withMocks bool) *harness {
 	people = append(people, // fixture: a foreign intern of another mentor (13 §2)
 		employees.Employee{UserID: "u-mentor-other", DisplayName: "Другой наставник", Role: "mentor"},
 		employees.Employee{UserID: "u-intern-other", DisplayName: "Чужой стажёр", Role: "intern", Track: "backend", MentorID: "u-mentor-other", StartDaysAgoDefault: 5})
-	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people}
+	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people,
+		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff}}
 	if _, err := seeder.SeedIfEmpty(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -79,6 +82,7 @@ func build(t *testing.T, withMocks bool) *harness {
 	if withMocks {
 		env := mockstest.Start(t, clk)
 		tools = &mcpclient.MCP{URLs: env.URLs(), Timeout: 5 * time.Second}
+		cfg.MocksAdminURL = env.URL + "/internal"
 	}
 	g := &guard.Guard{Employees: emp}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -94,7 +98,10 @@ func build(t *testing.T, withMocks bool) *harness {
 		Tools:        tools,
 		Guard:        g,
 		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
-		Health:       health.Handler(map[string]health.Probe{"postgres": health.ProbeFunc(func(context.Context) error { return nil })}, log),
+		Actions: &actions.Service{Store: &actions.Store{Redis: rc, Clock: clk}, Tools: tools, Guard: g, Pool: pool,
+			Events: rec, Clock: clk, ConfirmWait: 300 * time.Millisecond},
+		Seeder: seeder,
+		Health: health.Handler(map[string]health.Probe{"postgres": health.ProbeFunc(func(context.Context) error { return nil })}, log),
 	}}
 	h, err := Handler(s)
 	if err != nil {
