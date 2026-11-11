@@ -70,3 +70,57 @@ func TestParseLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadAPIBusinessSettings(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r"}
+	c, err := LoadAPI(env(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.MCPURLs["absences"] != "http://mcp-mocks:8090/mcp/absences" || c.MCPTimeout.Milliseconds() != 3000 {
+		t.Fatalf("mcp defaults: %+v", c.MCPURLs)
+	}
+	if c.LLM.Provider != "demo" || !c.DemoToolsEnabled || c.KBRHigh != 0.1 || c.SessionTTL.Hours() != 12 || c.PollIntervalMS != 10000 {
+		t.Fatalf("defaults: %+v", c)
+	}
+	m := map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r",
+		"LLM_PROVIDER": "openai_compatible", "LLM_BASE_URL": "https://llm.example/v1/", "LLM_EXTRA_HEADERS": "X-Folder=abc, X-B: c",
+		"ALLOWED_ORIGINS": "http://a.test/, http://b.test", "COOKIE_SECURE": "true", "DEMO_TOOLS_ENABLED": "false"}
+	c, err = LoadAPI(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LLM.Provider != "demo" || c.LLM.Misconfigured != "LLM_MODEL" || c.LLM.BaseURL != "https://llm.example/v1" {
+		t.Fatalf("AG-24: %+v", c.LLM)
+	}
+	if c.LLM.ExtraHeaders["X-Folder"] != "abc" || c.LLM.ExtraHeaders["X-B"] != "c" {
+		t.Fatalf("headers: %v", c.LLM.ExtraHeaders)
+	}
+	if len(c.AllowedOrigins) != 2 || c.AllowedOrigins[0] != "http://a.test" || !c.CookieSecure || c.DemoToolsEnabled {
+		t.Fatalf("origins: %+v", c)
+	}
+	m["LLM_MODEL"] = "m"
+	if c, _ = LoadAPI(env(m)); c.LLM.Provider != "openai_compatible" || c.LLM.Misconfigured != "" {
+		t.Fatalf("configured: %+v", c.LLM)
+	}
+	delete(m, "LLM_BASE_URL")
+	if c, _ = LoadAPI(env(m)); c.LLM.Misconfigured != "LLM_BASE_URL" {
+		t.Fatalf("no base url: %+v", c.LLM)
+	}
+	for k, v := range map[string]string{"LLM_PROVIDER": "gigachat", "MCP_TIMEOUT_MS": "x", "KB_R_HIGH": "2",
+		"SESSION_TTL_HOURS": "0", "PATH_POLL_INTERVAL_MS": "5", "LLM_TIMEOUT_SECONDS": "-1", "MCP_ACCESS_URL": "::bad", "KB_R_LOW": "x"} {
+		bad := map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r", k: v}
+		if _, err := LoadAPI(env(bad)); err == nil {
+			t.Errorf("%s=%s accepted", k, v)
+		}
+	}
+	if c, err := LoadMocks(env(map[string]string{"DATABASE_URL": "postgres://x", "ACCESS_TIMER_MINUTES": "5"})); err != nil || c.AccessTimerMinutes != 5 {
+		t.Fatalf("mocks timer: %v %v", c.AccessTimerMinutes, err)
+	}
+	if _, err := LoadMocks(env(map[string]string{"DATABASE_URL": "postgres://x", "ACCESS_TIMER_MINUTES": "0"})); err == nil {
+		t.Fatal("timer 0 accepted")
+	}
+	if boolVar(env(map[string]string{"X": "maybe"}), "X", true) != true || boolVar(env(map[string]string{"X": "off"}), "X", true) {
+		t.Fatal("boolVar")
+	}
+}
