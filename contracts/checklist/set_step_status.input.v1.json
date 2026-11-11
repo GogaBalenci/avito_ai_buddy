@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/set_step_status.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor",
+    "step_id",
+    "status",
+    "reason",
+    "idempotency_key"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    },
+    "step_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_progress",
+        "waiting",
+        "done"
+      ]
+    },
+    "expected_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "waiting",
+        "done"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "user_start",
+        "user_mark_done",
+        "user_reopen",
+        "access_pending",
+        "access_approved",
+        "access_rejected"
+      ]
+    },
+    "request_ref": {
+      "type": "string",
+      "pattern": "^ACC-\\d{6}$"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}

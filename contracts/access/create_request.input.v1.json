@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/create_request.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor",
+    "idempotency_key",
+    "params_hash",
+    "resource_id"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "format": "uuid",
+      "description": "action_id черновика"
+    },
+    "params_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 канонического JSON {resource_id}; justification не входит"
+    },
+    "resource_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,40}$"
+    },
+    "justification": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Формирует сервер бадди из шага; свободный ввод пользователя не допускается"
+    }
+  }
+}

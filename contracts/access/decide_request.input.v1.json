@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/decide_request.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor",
+    "idempotency_key",
+    "request_id",
+    "decision"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^ACC-\\d{6}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject"
+      ]
+    },
+    "reject_reason": {
+      "type": "string",
+      "enum": [
+        "not_needed",
+        "other_resource",
+        "discuss_1on1"
+      ]
+    }
+  },
+  "if": {
+    "properties": {
+      "decision": {
+        "const": "reject"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "reject_reason"
+    ]
+  },
+  "else": {
+    "not": {
+      "required": [
+        "reject_reason"
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/list_requests.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "request_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ACC-\\d{6}$"
+      },
+      "maxItems": 50,
+      "uniqueItems": true
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 20
+    }
+  }
+}

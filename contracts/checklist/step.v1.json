@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/step.v1.json",
+  "title": "ChecklistStep",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step_id",
+    "track_id",
+    "period",
+    "order",
+    "title",
+    "type",
+    "owner",
+    "help",
+    "synthetic",
+    "status"
+  ],
+  "properties": {
+    "step_id": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[a-z0-9.-]{1,20}$"
+    },
+    "track_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "checklist_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^\\d\\.\\d{1,2}$"
+    },
+    "period": {
+      "type": "string",
+      "enum": [
+        "week1",
+        "week2",
+        "month1",
+        "month2",
+        "month3",
+        "after3"
+      ]
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "learn",
+        "setup",
+        "access",
+        "meet",
+        "tell",
+        "org"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "enum": [
+        "intern",
+        "mentor",
+        "lead",
+        "curator"
+      ]
+    },
+    "help": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "explain",
+            "access_request",
+            "ask_mentor",
+            "track_only"
+          ]
+        },
+        "kb_doc": {
+          "type": "string"
+        },
+        "source_level": {
+          "type": "string",
+          "enum": [
+            "playbook",
+            "case",
+            "public",
+            "none"
+          ]
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
+    "synthetic": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "waiting",
+        "done"
+      ]
+    },
+    "status_updated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "status_source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "user",
+        "system",
+        "seed",
+        null
+      ]
+    },
+    "request_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^ACC-\\d{6}$"
+    }
+  }
+}

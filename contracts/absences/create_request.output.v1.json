@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "absences/create_request.output.v1.json",
+  "title": "absences.create_request output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request",
+    "idempotent_replay"
+  ],
+  "properties": {
+    "request": {
+      "$ref": "request.v1.json"
+    },
+    "idempotent_replay": {
+      "type": "boolean"
+    }
+  }
+}

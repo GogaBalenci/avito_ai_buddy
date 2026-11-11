@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/list_requests.output.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "items",
+    "total",
+    "auto_approved_now"
+  ],
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "request.v1.json"
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "auto_approved_now": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^ACC-\\d{6}$"
+      }
+    }
+  }
+}

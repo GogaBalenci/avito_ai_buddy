@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/get_doc.output.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "doc"
+  ],
+  "properties": {
+    "doc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slug",
+        "title",
+        "kind",
+        "summary",
+        "body_md",
+        "label",
+        "source_level",
+        "url",
+        "updated_at"
+      ],
+      "properties": {
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "process",
+            "term",
+            "tool",
+            "guide",
+            "org"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "body_md": {
+          "type": "string",
+          "maxLength": 20000
+        },
+        "label": {
+          "type": "string",
+          "enum": [
+            "test_instruction",
+            "test_description"
+          ]
+        },
+        "source_level": {
+          "type": "string",
+          "enum": [
+            "playbook",
+            "case",
+            "public",
+            "team",
+            "none"
+          ]
+        },
+        "dated": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "conflicts_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

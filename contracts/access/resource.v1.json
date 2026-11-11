@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/resource.v1.json",
+  "title": "AccessResource",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "resource_id",
+    "title",
+    "kind",
+    "description",
+    "policy",
+    "effective_policy",
+    "access_level",
+    "approver",
+    "allowed"
+  ],
+  "properties": {
+    "resource_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,40}$"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "channel",
+        "space",
+        "repo",
+        "tool",
+        "database"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "policy": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "mentor",
+        "timer"
+      ]
+    },
+    "effective_policy": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "mentor",
+        "timer"
+      ],
+      "description": "С учётом флага access_mentor_approval"
+    },
+    "timer_minutes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "access_level": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write",
+        "admin"
+      ]
+    },
+    "approver": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 80
+    },
+    "allowed": {
+      "type": "boolean"
+    },
+    "deny_reason_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "ROLE_NOT_ALLOWED",
+        null
+      ]
+    },
+    "deny_explanation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 300
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

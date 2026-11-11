@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/set_step_status.output.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "step",
+    "changed",
+    "idempotent_replay"
+  ],
+  "properties": {
+    "step": {
+      "$ref": "step.v1.json"
+    },
+    "changed": {
+      "type": "boolean"
+    },
+    "idempotent_replay": {
+      "type": "boolean"
+    }
+  }
+}

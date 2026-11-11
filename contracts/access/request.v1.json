@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/request.v1.json",
+  "title": "AccessRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "employee_id",
+    "resource_id",
+    "status",
+    "policy",
+    "access_level",
+    "justification",
+    "created_at"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^ACC-\\d{6}$"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    },
+    "resource_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    },
+    "policy": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "mentor",
+        "timer"
+      ]
+    },
+    "access_level": {
+      "type": "string",
+      "enum": [
+        "read",
+        "write",
+        "admin"
+      ]
+    },
+    "justification": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "auto_approve_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "decided_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "decided_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "auto",
+        "timer",
+        "mentor",
+        null
+      ]
+    },
+    "decided_by_user_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reject_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "not_needed",
+        "other_resource",
+        "discuss_1on1",
+        null
+      ]
+    }
+  }
+}

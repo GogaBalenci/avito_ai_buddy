@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/search.output.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "items",
+    "denied",
+    "query_lexemes"
+  ],
+  "properties": {
+    "items": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "title",
+          "kind",
+          "summary",
+          "snippet",
+          "rank",
+          "label",
+          "source_level",
+          "url"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{2,60}$"
+          },
+          "title": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "process",
+              "term",
+              "tool",
+              "guide",
+              "org"
+            ]
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "snippet": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "rank": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "test_instruction",
+              "test_description"
+            ]
+          },
+          "source_level": {
+            "type": "string",
+            "enum": [
+              "playbook",
+              "case",
+              "public",
+              "team",
+              "none"
+            ]
+          },
+          "dated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^/kb/[a-z0-9-]+$"
+          },
+          "conflicts_with": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "denied": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slug",
+          "title"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "query_lexemes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

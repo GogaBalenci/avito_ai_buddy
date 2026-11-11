@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/get_path.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "intern",
+          "mentor",
+          "lead",
+          "curator"
+        ]
+      },
+      "uniqueItems": true,
+      "default": [
+        "intern"
+      ]
+    }
+  }
+}

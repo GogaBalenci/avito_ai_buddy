@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/get_path.output.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "employee_id",
+    "track",
+    "periods",
+    "steps"
+  ],
+  "properties": {
+    "employee_id": {
+      "type": "string"
+    },
+    "track": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "synthetic"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "disclaimer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "from_day",
+          "to_day"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "from_day": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "to_day": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "step.v1.json"
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "absences/create_request.input.v1.json",
+  "title": "absences.create_request input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor",
+    "idempotency_key",
+    "params_hash",
+    "type",
+    "date_from",
+    "date_to"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "format": "uuid",
+      "description": "action_id черновика"
+    },
+    "params_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 канонического JSON {date_from, date_to, type}"
+    },
+    "type": {
+      "const": "time_off"
+    },
+    "date_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "date_to": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

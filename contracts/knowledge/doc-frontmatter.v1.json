@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/doc-frontmatter.v1.json",
+  "title": "KnowledgeDocFrontMatter",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "slug",
+    "title",
+    "kind",
+    "source_level",
+    "allowed_roles",
+    "summary"
+  ],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{2,60}$"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "process",
+        "term",
+        "tool",
+        "guide",
+        "org"
+      ]
+    },
+    "source_level": {
+      "type": "string",
+      "enum": [
+        "playbook",
+        "case",
+        "public",
+        "team",
+        "none"
+      ]
+    },
+    "dated": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "allowed_roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "intern",
+          "mentor"
+        ]
+      }
+    },
+    "disclose_title": {
+      "type": "boolean",
+      "default": false
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "week1",
+          "week2",
+          "month1",
+          "month2",
+          "month3",
+          "after3"
+        ]
+      },
+      "default": []
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "conflicts_with": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]{2,60}$"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "test_only": {
+      "type": "boolean",
+      "default": false
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    }
+  }
+}

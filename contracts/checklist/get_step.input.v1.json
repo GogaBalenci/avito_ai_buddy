@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "checklist/get_step.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor",
+    "step_id"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "step_id": {
+      "type": "string",
+      "pattern": "^[a-z]{2}-[a-z0-9.-]{1,20}$"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    }
+  }
+}

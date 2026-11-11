@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "absences/request.v1.json",
+  "title": "AbsenceRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "employee_id",
+    "type",
+    "status",
+    "date_from",
+    "date_to",
+    "working_days",
+    "created_at"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "pattern": "^ABS-\\d{6}$"
+    },
+    "employee_id": {
+      "type": "string",
+      "pattern": "^u-[a-z0-9-]{1,40}$"
+    },
+    "type": {
+      "const": "time_off"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "registered",
+        "cancelled"
+      ]
+    },
+    "date_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "date_to": {
+      "type": "string",
+      "format": "date"
+    },
+    "working_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

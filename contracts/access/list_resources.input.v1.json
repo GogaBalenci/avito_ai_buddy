@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "access/list_resources.input.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor"
+  ],
+  "properties": {
+    "actor": {
+      "$ref": "../common/actor.v1.json"
+    },
+    "include_denied": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

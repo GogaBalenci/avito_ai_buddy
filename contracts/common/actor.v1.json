@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/actor.v1.json",
+  "title": "Actor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "user_id",
+    "role"
+  ],
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "pattern": "^(u|svc)-[a-z0-9-]{1,40}$"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "intern",
+        "mentor",
+        "system"
+      ]
+    }
+  },
+  "if": {
+    "properties": {
+      "role": {
+        "const": "system"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "user_id": {
+        "pattern": "^svc-"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "user_id": {
+        "pattern": "^u-"
+      }
+    }
+  }
+}
