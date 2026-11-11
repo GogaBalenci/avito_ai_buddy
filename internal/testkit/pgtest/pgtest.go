@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -104,7 +105,7 @@ func ensureTemplate(ctx context.Context, admin string) (string, error) {
 	_, errMocks := migrate.Apply(ctx, pool, migrations.Mocks(), "mock_admin")
 	pool.Close()
 	if errApp != nil || errMocks != nil {
-		return "", fmt.Errorf("migrations: app=%v mocks=%v", errApp, errMocks)
+		return "", fmt.Errorf("migrations: %w", errors.Join(errApp, errMocks))
 	}
 	if _, err := conn.Exec(ctx, fmt.Sprintf(`ALTER DATABASE %s RENAME TO %s`, build, tmpl)); err != nil {
 		return "", err

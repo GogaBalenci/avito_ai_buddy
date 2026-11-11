@@ -1,6 +1,7 @@
 package events_test
 
 import (
+	"errors"
 	"context"
 	"testing"
 
@@ -57,7 +58,7 @@ func TestFlagsPG(t *testing.T) {
 	if !flags.On(ctx, p, flags.LLMEnabled) || flags.On(ctx, p, flags.LLMRephrase) {
 		t.Fatal("On")
 	}
-	if _, err := p.Get(ctx, "nope"); err != flags.ErrUnknown {
+	if _, err := p.Get(ctx, "nope"); !errors.Is(err, flags.ErrUnknown) {
 		t.Fatal(err)
 	}
 	if v, _ := (flags.Static{"a": "on"}).Get(ctx, "a"); v != "on" {

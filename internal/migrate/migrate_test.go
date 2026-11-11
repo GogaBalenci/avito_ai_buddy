@@ -56,7 +56,7 @@ func TestAppDoesNotTouchMockSchemas(t *testing.T) {
 			}
 			return nil
 		}
-		if !(strings.HasSuffix(p, ".go") || strings.HasSuffix(p, ".sql")) || strings.HasSuffix(p, "_test.go") {
+		if (!strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, ".sql")) || strings.HasSuffix(p, "_test.go") {
 			return nil
 		}
 		b, err := os.ReadFile(p)

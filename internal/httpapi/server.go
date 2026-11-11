@@ -81,7 +81,7 @@ var publicPaths = map[string]bool{
 
 // Handler builds the router with the middleware chain of 12 §5.2.
 func Handler(s *Server) (http.Handler, error) {
-	spec, err := api.GetSwagger()
+	spec, err := api.GetSpec()
 	if err != nil {
 		return nil, err
 	}

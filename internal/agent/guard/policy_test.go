@@ -101,7 +101,7 @@ func TestConditions(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if err := g.Authorize(ctx, c.a, c.p, c.o); !errors.Is(err, c.want) && !(err == nil && c.want == nil) {
+			if err := g.Authorize(ctx, c.a, c.p, c.o); !errors.Is(err, c.want) && (err != nil || c.want != nil) {
 				t.Fatalf("got %v, want %v", err, c.want)
 			}
 		})
