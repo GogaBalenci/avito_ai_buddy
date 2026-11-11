@@ -6,6 +6,8 @@ web/dist
 web/coverage
 coverage
 docs
+# shared test vectors (Go + Vitest, 10 §16.1) are needed by test-go
+!docs/specs
 openspec
 /*.md
 .DS_Store
