@@ -1,4 +1,4 @@
-// Package rules recognises intents in demo mode (09 §6): normalisation,
+// Package rules recognizes intents in demo mode (09 §6): normalization,
 // entity extraction, Snowball stemming and a weighted dictionary that lives
 // in data (intents.ru.yaml), not in code. Rules always run: in demo they give
 // the intent, with a model they give entities and guard topics (09 §3.3).
@@ -203,7 +203,7 @@ func stem(tok string) string {
 	return tok
 }
 
-// Tokens splits normalised text by everything that is not a letter or digit.
+// Tokens splits normalized text by everything that is not a letter or digit.
 func Tokens(s string) []string {
 	return strings.FieldsFunc(normalize(s), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
 }
@@ -247,7 +247,7 @@ type StepTitle struct {
 	Title string
 }
 
-// Hints is the context the recogniser may use.
+// Hints is the context the recognizer may use.
 type Hints struct {
 	Aliases []Alias
 	Steps   []StepTitle

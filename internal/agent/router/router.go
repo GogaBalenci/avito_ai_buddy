@@ -1,5 +1,5 @@
 // Package router is the orchestrator of the agent (09 §2, §5): it takes a
-// masked message or a button payload, recognises the intent, checks rights in
+// masked message or a button payload, recognizes the intent, checks rights in
 // code, reads services through ToolClient and builds a deterministic reply.
 // Writes to services happen only through confirm endpoints (09 §8.1).
 package router
@@ -124,7 +124,7 @@ func (g *Agent) Handle(ctx context.Context, a actor.Actor, in Input) (Output, er
 		reply.Notice(out.Reply, "pii_masked")
 	}
 	if out.Reply.Intent != api.AgentReplyIntent(rules.Unknown) {
-		g.Redis.Del(ctx, unkKey(a.UserID)) // any recognised intent resets the counter (09 §6.4)
+		g.Redis.Del(ctx, unkKey(a.UserID)) // any recognized intent resets the counter (09 §6.4)
 	}
 	g.publish(ctx, "reply_sent", map[string]any{"intent": string(out.Reply.Intent),
 		"latency_ms_total": g.Clock.Now().Sub(start).Milliseconds(), "rephrased": false, "reply_id": out.Reply.ReplyId.String()})

@@ -56,8 +56,8 @@ func TestMustLoadPanicsNever(t *testing.T) {
 	_ = MustLoad()
 }
 
-// T-cases of 09 §14.2–14.3 that the recogniser alone decides.
-func TestBehaviourTable(t *testing.T) {
+// T-cases of 09 §14.2–14.3 that the recognizer alone decides.
+func TestBehaviorTable(t *testing.T) {
 	cases := []struct {
 		id, text, intent, topic string
 	}{

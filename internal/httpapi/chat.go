@@ -85,7 +85,7 @@ func (s *Server) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	rep := out.Reply
 	if err := s.saveExchange(ctx, a, in, out); err != nil {
-		if saved, ok := s.fromDB(ctx, a.UserID, cmid); ok { // UNIQUE: the second line of defence
+		if saved, ok := s.fromDB(ctx, a.UserID, cmid); ok { // UNIQUE: the second line of defense
 			rep = saved
 		} else {
 			s.Redis.Del(context.WithoutCancel(ctx), key)

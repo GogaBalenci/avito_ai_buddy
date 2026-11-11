@@ -17,6 +17,8 @@ linters:
   settings:
     misspell:
       locale: US
+      # status values fixed by the contracts (10 §11, 11 §3)
+      ignore-rules: [cancelled]
     depguard:
       rules:
         # The application does not depend on mocks: they can be thrown away

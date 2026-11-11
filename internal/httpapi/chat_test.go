@@ -71,7 +71,7 @@ func stepStatus(t *testing.T, c *client, id string) string {
 }
 
 // 09 §14.2: T-01…T-08, T-12…T-14, T-21, T-23, T-30 on the demo seeds.
-func TestChatBehaviourTable(t *testing.T) {
+func TestChatBehaviorTable(t *testing.T) {
 	h := newIntegration(t)
 	be := h.login("u-intern-be")
 
@@ -167,7 +167,7 @@ func TestChatPIIMasked(t *testing.T) {
 	}
 	r = say(t, be, "хочу отгул, мой телефон +7 912 345-67-89")
 	if r.Intent != "time_off" || r.Notices[0] != "pii_masked" {
-		t.Fatalf("masked and recognised: %+v", r)
+		t.Fatalf("masked and recognized: %+v", r)
 	}
 }
 
@@ -187,14 +187,14 @@ func TestChatUnknownTwice(t *testing.T) {
 	if hasAction(r, api.Copy) == nil || len(h.events.Events("escalated")) != 1 {
 		t.Fatalf("copy action / escalated event: %+v", r)
 	}
-	// the counter is reset by a recognised intent
+	// the counter is reset by a recognized intent
 	r = say(t, be, "ыыы")
 	if r.Escalation != nil {
 		t.Fatalf("third must start over: %+v", r)
 	}
 	say(t, be, "что дальше")
 	if r = say(t, be, "ыыы"); r.Escalation != nil {
-		t.Fatalf("after a recognised intent: %+v", r)
+		t.Fatalf("after a recognized intent: %+v", r)
 	}
 	// p. 7: a number answers the last question
 	r = say(t, be, "2")
