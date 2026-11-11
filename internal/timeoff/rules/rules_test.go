@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -92,5 +93,29 @@ func TestWorkingDaysAndHelpers(t *testing.T) {
 	}
 	if MaxDate(d("2026-11-10")).Format("2006-01-02") != "2027-02-08" {
 		t.Fatal("max date")
+	}
+}
+
+func TestMessages(t *testing.T) {
+	cases := map[string]Violation{
+		"Укажи дату":        {Code: Required},
+		"Не похоже на дату": {Code: InvalidDate},
+		"Дата уже прошла — выбери сегодня или позже":                       {Code: DateInPast},
+		"Можно выбрать дату не позже 08.02.2027":                           {Code: TooFar, Params: map[string]any{"max_date": "2027-02-08"}},
+		"14.11 — суббота. Отгул начинается и заканчивается в рабочий день": {Code: WeekendDate, Params: map[string]any{"date": "2026-11-14", "weekday": 6}},
+		"«До» не может быть раньше «от»":                                   {Code: RangeReversed},
+		"Пересекается с заявкой ABS-000101 на 30.11–01.12":                 {Code: Overlap, Params: map[string]any{"request_id": "ABS-000101", "date_from": "2026-11-30", "date_to": "2026-12-01"}},
+		"Сервис отклонил даты: проверь их или спроси наставника":           {Code: "WHAT"},
+	}
+	for want, v := range cases {
+		if got := Message(v); got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	}
+	if !strings.HasPrefix(Message(Violation{Code: TooLong, Params: map[string]any{"working_days": 6}}), "Выбрано 6 рабочих") {
+		t.Error("too long")
+	}
+	if ddmm("x") != "x" {
+		t.Error("ddmm")
 	}
 }
