@@ -1,8 +1,8 @@
 #!/bin/sh
 # Go tests and coverage (service test-go). Same command in CI and for the expert:
 #   docker compose --profile test run --rm test-go
-# C0: two reports (app / mocks) without a gate; the 80% gate (scripts/coverage-check.sh)
-# is switched on at C1 together with business code (12 §11.2).
+# Two reports (12 §11.2): the application (threshold 80%, target 85%) and the
+# mocks (reference only, outside the threshold — Q&A 10.11).
 set -eu
 OUT=${OUT:-/out}
 mkdir -p "$OUT"
@@ -30,3 +30,4 @@ echo "== coverage"
 printf 'app:   %s\n' "$(tail -1 "$OUT/go-app.txt" | awk '{print $NF}')"
 printf 'mocks: %s\n' "$(tail -1 "$OUT/go-mocks.txt" | awk '{print $NF}')"
 echo "reports: coverage/go-app.html, coverage/go-mocks.html"
+sh scripts/coverage-check.sh "$OUT/go-app.txt" 80
