@@ -83,7 +83,7 @@ func (f *Fake) Call(ctx context.Context, endpoint, tool string, in any, out any)
 	if err := contracts.ValidateJSON(OutputSchema(endpoint, tool), b); err != nil {
 		return &ToolError{Tool: name, Code: CodeInternal, Message: "answer violates contract: " + err.Error(), Retryable: true}
 	}
-	if out == nil {
+	if isNil(out) {
 		return nil
 	}
 	return json.Unmarshal(b, out)

@@ -26,7 +26,7 @@ import (
 // exactly the schemas from contracts/.
 func TestToolsListMatchesContracts(t *testing.T) {
 	env := mockstest.Start(t, testkit.NewClock(testkit.Today))
-	for _, ep := range []string{"checklist"} {
+	for _, ep := range []string{"checklist", "absences"} {
 		client := mcp.NewClient(&mcp.Implementation{Name: "t", Version: "1"}, nil)
 		sess, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: env.URL + "/mcp/" + ep}, nil)
 		if err != nil {

@@ -26,6 +26,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/health"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpx"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/kb"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/absences"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/admin"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/catalog"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/checklist"
@@ -96,6 +97,7 @@ type Mocks struct {
 	Content   *Content
 	Flags     *admin.Flags
 	Checklist *checklist.Service
+	Absences  *absences.Service
 	cfg       config.Config
 }
 
@@ -123,6 +125,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	people := employees.NewStatic(append(append([]employees.Employee{}, c.Employees...), opts.ExtraEmployees...))
 	m := &Mocks{Pool: pool, Clock: clk, Content: c, Flags: &admin.Flags{Pool: pool}, cfg: cfg,
 		Checklist: &checklist.Service{Pool: pool, Clock: clk, Employees: people}}
+	m.Absences = &absences.Service{Pool: pool, Clock: clk, Employees: people, Flags: m.Flags}
 	if err := m.init(ctx, false); err != nil {
 		pool.Close()
 		return nil, err
@@ -138,7 +141,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	}
 	endpoint("checklist", func(s *mcp.Server) { m.Checklist.Register(s, log) })
 	endpoint("knowledge", func(*mcp.Server) {})
-	endpoint("absences", func(*mcp.Server) {})
+	endpoint("absences", func(s *mcp.Server) { m.Absences.Register(s, log) })
 	endpoint("access", func(*mcp.Server) {})
 	if cfg.DemoToolsEnabled {
 		mux.Handle("/internal/demo/", admin.Handler(m.Flags, func(ctx context.Context) error { return m.init(ctx, true) }))
@@ -161,6 +164,9 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 			if _, err := tx.Exec(ctx, `TRUNCATE mock_checklist.progress, mock_checklist.idempotency`); err != nil {
 				return err
 			}
+			if err := absences.Truncate(ctx, tx); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `DELETE FROM mock_admin.meta WHERE key = 'seeded_at'`); err != nil {
 				return err
 			}
@@ -177,6 +183,9 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 			return err
 		}
 		if err := checklist.Seed(ctx, tx, now, SeedProgress(m.Content)); err != nil {
+			return err
+		}
+		if err := absences.Seed(ctx, tx, now); err != nil {
 			return err
 		}
 		_, err := tx.Exec(ctx, `INSERT INTO mock_admin.meta (key, value) VALUES ('seeded_at', $1)

@@ -32,10 +32,19 @@ var Defaults = []struct {
 // Flags reads and writes mock flags.
 type Flags struct{ Pool *pgxpool.Pool }
 
+// Querier is *pgxpool.Pool or pgx.Tx.
+type Querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
 // Get returns the flag value; on error the default (fail safe).
-func (f *Flags) Get(ctx context.Context, name string) string {
+func (f *Flags) Get(ctx context.Context, name string) string { return GetIn(ctx, f.Pool, name) }
+
+// GetIn reads a flag through q — inside a transaction use the tx, so a busy
+// pool cannot deadlock.
+func GetIn(ctx context.Context, q Querier, name string) string {
 	var v string
-	if err := f.Pool.QueryRow(ctx, `SELECT value FROM mock_admin.flags WHERE name = $1`, name).Scan(&v); err != nil {
+	if err := q.QueryRow(ctx, `SELECT value FROM mock_admin.flags WHERE name = $1`, name).Scan(&v); err != nil {
 		for _, d := range Defaults {
 			if d.Name == name {
 				return d.Value

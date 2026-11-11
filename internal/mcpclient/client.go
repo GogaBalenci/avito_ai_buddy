@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -154,13 +155,22 @@ func Decode(tool, outputSchema string, res *mcp.CallToolResult, out any) error {
 	if err := contracts.ValidateJSON(outputSchema, raw); err != nil {
 		return &ToolError{Tool: tool, Code: CodeInternal, Message: "answer violates contract: " + err.Error(), Retryable: true}
 	}
-	if out == nil {
+	if isNil(out) {
 		return nil
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
 		return &ToolError{Tool: tool, Code: CodeInternal, Message: err.Error(), Retryable: true}
 	}
 	return nil
+}
+
+// isNil also catches a typed nil pointer passed as out.
+func isNil(v any) bool {
+	if v == nil {
+		return true
+	}
+	rv := reflect.ValueOf(v)
+	return rv.Kind() == reflect.Pointer && rv.IsNil()
 }
 
 func structured(res *mcp.CallToolResult) ([]byte, error) {
