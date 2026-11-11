@@ -1,8 +1,10 @@
 # Права доступа AI-buddy: RBAC + ABAC
 
-Версия 1.0 · 11.11.2026 · статус: готово к C1
+Версия 1.1 · 11.11.2026 · статус: готово к C1
 Источники: `02-decisions.md` v3.9 («Роли», «Безопасность»), `09-spec-agent.md` §3.1, §5.2, §11; `10-spec-s3-time-off.md` §8; `11-spec-s1-s2-s4.md` §1.9, §2.9, §3.9; `17-qa-patch.md` (`conflicts_with`, `access_level`, `approver`); `12-architecture.md` §5, §7, §14; `16-qa-webinar.md` §6 (RBAC + ABAC, ориентир — IAM в GCP/AWS).
 Это окончательная матрица прав. Если правила в `09`–`11` с ней расходятся, прав этот файл. Тестовая матрица — допущение команды, а не ролевая модель Авито: по Q&A эталонную модель не дадут, и при интеграции Авито «само настроит RBAC/ABAC».
+
+**Изменения v1.1:** правило загрузчика базы знаний про `conflicts_with` — номер 7, а не 8 (`11` v1.2 §2.10.3).
 
 ---
 
@@ -192,8 +194,8 @@
 | 5 | Маршруты агента | Наставник на сценариях стажёра → шаблон со ссылкой, `permission_denied{tool: "route:<intent>"}` | `internal/agent/router` | Наставник оформит «свой» отгул |
 | 6 | MCP-имитация | Независимая повторная проверка роли, `self`/`mentee`, `resource_allowed`, `system_reason`; FSM переходов | `internal/mcpmocks/*` (своя реализация, не импортирует guard) | Обход оркестратора; расхождение guard'ов ловят тесты |
 | 7 | Поиск (SQL) | `WHERE d.allowed_roles @> ARRAY[$role]`; закрытые — отдельный запрос только `slug, title` при `disclose_title`; тело закрытого документа не выбирается из БД никогда | `internal/mcpmocks/knowledge` | Утечка тела в ответ или в модель |
-| 8 | Загрузчик базы знаний | Правило 8: `conflicts_with` взаимный, slug существует, `allowed_roles` **одинаковые** | `internal/kb` (при старте и в CI) | По расхождению можно узнать о закрытом документе |
-| 9 | Оркестратор, расхождения | Конфликтующий документ дочитывается `get_doc` **с тем же `actor`**; если отказ (не должно случаться после правила 8) — расхождение молча не показывается, лог `error` | `internal/agent/router` | Вторая линия к правилу 8 |
+| 8 | Загрузчик базы знаний | Правило 7: `conflicts_with` взаимный, slug существует, `allowed_roles` **одинаковые** | `internal/kb` (при старте и в CI) | По расхождению можно узнать о закрытом документе |
+| 9 | Оркестратор, расхождения | Конфликтующий документ дочитывается `get_doc` **с тем же `actor`**; если отказ (не должно случаться после правила 7) — расхождение молча не показывается, лог `error` | `internal/agent/router` | Вторая линия к правилу 7 |
 | 10 | Вход модели | Модель получает только `summary` и фрагменты уже отфильтрованных документов; у модели нет инструментов | `internal/agent/llm`, `reply` | Prompt injection вызовет действие |
 | 11 | Каталог доступов | Ресурс с `allowed_roles: []` обязан иметь `deny_explanation`; запрещённые не показываются в списке выбора | `internal/mcpmocks/catalog`, `/api/access/resources` | Подсказываем то, что нельзя |
 | 12 | Фронт | Скрывает недоступные кнопки (наставнику — «Оформить отгул», стажёру — «Одобрить») | `web/` | Только UX: безопасность на слоях 1–7 |
@@ -249,7 +251,7 @@ var policy = map[Role]map[Permission]Condition{
 | D9 | intern → payload `resource:prod-db-write` / `step:cm-1.1` | 403 / 404 | AC-A21, AC-P23 |
 | D10 | `mcp-mocks`: `absences.create_request` с `actor.role = mentor` и `system` | `PERMISSION_DENIED` | AC-25 |
 | D11 | `mcp-mocks`: `checklist.set_step_status` `access_approved` от `intern`; `user_mark_done` от `system` | `PERMISSION_DENIED` | C-07 |
-| D12 | Загрузчик: `conflicts_with` между документами с разными `allowed_roles` | ошибка правила 8, сервис не стартует | AC-K24, KM-14 |
+| D12 | Загрузчик: `conflicts_with` между документами с разными `allowed_roles` | ошибка правила 7, сервис не стартует | AC-K24, KM-14 |
 | D13 | Сессия с ролью `system` (подложенный ключ в Redis) | 401, сессия удалена | §2 |
 | D14 | `POST /api/demo/flags {name: llm_enabled}`; любой `/api/demo/*` при `DEMO_TOOLS_ENABLED=false` | 400; 404 | A-34 |
 | D15 | `POST` без `Origin` или с чужим `Origin` | 403 `BAD_ORIGIN` | A-35 |

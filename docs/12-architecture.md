@@ -1,8 +1,10 @@
 # Архитектура AI-buddy («Авиитик Витя»)
 
-Версия 1.0 · 11.11.2026 · статус: готово к C1
+Версия 1.1 · 11.11.2026 · статус: C0 закрыт, патч `17` перенесён
 Источники: `02-decisions.md` v3.8, `09-spec-agent.md` v1.2, `10-spec-s3-time-off.md` v1.2, `11-spec-s1-s2-s4.md` v1.1, `17-qa-patch.md` v1.0 (до переноса — источник правды по своим пунктам), `16-qa-webinar.md`.
-Здесь окончательно зафиксированы структура репозитория, компоненты, OpenAPI, контракты MCP, схема БД и ключи Redis, а также имена `MCP_*_URL` и эндпоинтов чата. Если имена в `09`–`11` расходятся с этим файлом, прав этот файл (так сказано в самих спецификациях). Список правок к ним — §16, переносится промтом 3.0. Матрица прав — `13-permissions.md` (v1.0).
+Здесь окончательно зафиксированы структура репозитория, компоненты, OpenAPI, контракты MCP, схема БД и ключи Redis, а также имена `MCP_*_URL` и эндпоинтов чата. Если имена в `09`–`11` расходятся с этим файлом, прав этот файл (так сказано в самих спецификациях). Список правок к ним — §16, переносится промтом 3.0. Матрица прав — `13-permissions.md` (v1.1).
+
+**Изменения v1.1 (после C0 и промта 3.0):** §2 — фактическое имя репозитория и модуля, пакеты `internal/health` и `internal/httpx`, скрипты, состав `docs/` и `openspec/`; §4.3 — комментарий к `ALLOWED_ORIGINS` на отдельной строке (как в `.env.example`); загрузчик базы знаний — 8 правил, `conflicts_with` — правило 7 (`11` v1.2); §16 перенесён в `09` v1.3, `10` v1.3, `11` v1.2; §17 — версии зафиксированы на C0.
 
 ---
 
@@ -33,7 +35,7 @@
 ## 2. Структура репозитория
 
 ```
-avito-ai-buddy/
+avito_ai_buddy/
 ├── README.md                      # запуск, учётки, проверка S1–S4, тесты, LLM
 ├── LICENSE                        # MIT
 ├── .env.example                   # §4.3, без секретов
@@ -43,7 +45,7 @@ avito-ai-buddy/
 ├── Makefile                       # только удобство: up, down, test, smoke, gen
 ├── docker-compose.yml             # §4
 ├── compose.dev.yaml               # локально: публикует postgres/redis на 127.0.0.1
-├── go.mod / go.sum                # модуль github.com/<owner>/avito-ai-buddy
+├── go.mod / go.sum                # модуль github.com/GogaBalenci/avito_ai_buddy, Go 1.26
 │
 ├── api/
 │   ├── openapi.yaml               # §6 — единственный источник HTTP-контракта
@@ -95,6 +97,8 @@ avito-ai-buddy/
 │   ├── store/                     # pgx-репозитории схемы app
 │   ├── demo/                      # сиды app, сброс (вызывает mcp-mocks admin)
 │   ├── clock/                     # Clock (Europe/Moscow), фейк для тестов
+│   ├── health/                    # /healthz: проверки PostgreSQL и Redis (C0)
+│   ├── httpx/                     # общее для api и mcp-mocks: сервер с graceful shutdown, логи запросов, JSON-ошибки (C0)
 │   ├── testkit/                   # pgtest (БД на пакет из шаблона), miniredis, фейки
 │   └── mcpmocks/                  # ВСЁ, что относится к имитациям (вне порога)
 │       ├── server/                # сборка 4 MCP-endpoint + /internal/demo + /healthz
@@ -122,9 +126,10 @@ avito-ai-buddy/
 ├── deploy/
 │   ├── docker/{api,mcp-mocks,web,test-go}.Dockerfile
 │   └── grafana/provisioning/{datasources,dashboards}/ + dashboards/buddy.json
-├── scripts/                       # POSIX sh: test-go.sh, coverage-check.sh, gen.sh
-├── docs/                          # 01–17 (копии из Project knowledge), CJM, скриншоты
-├── openspec/                      # specs/*/spec.md, changes/*/{proposal,design,tasks}.md
+├── scripts/                       # POSIX sh: test-go.sh, smoke.sh, verify-c0.sh (C0); coverage-check.sh, gen.sh — на C1
+├── docs/                          # документы для сдачи: 08–13, 16, 17, source/*.csv, README.md (порядок чтения)
+├── openspec/                      # project.md; changes/add-*/{proposal,design,tasks}.md + specs/*/spec.md (ADDED);
+│                                  # specs/*/spec.md появляются после `openspec archive` реализованного изменения
 └── .github/workflows/ci.yml       # §12
 ```
 
@@ -315,7 +320,9 @@ KB_R_HIGH=0.1                       # подбираются 13.11 (KM-13)
 KB_R_LOW=0.03
 SESSION_TTL_HOURS=12
 COOKIE_SECURE=false                 # true за HTTPS
-ALLOWED_ORIGINS=                    # необязательно: доп. origin через запятую; по умолчанию same-origin
+# необязательно: доп. origin через запятую; по умолчанию same-origin
+# (комментарий на отдельной строке: у пустого значения compose принимает хвостовой комментарий за значение)
+ALLOWED_ORIGINS=
 LOG_LEVEL=info
 ```
 
@@ -1457,7 +1464,7 @@ contracts/
     "tags":           { "type": "array", "items": { "type": "string" }, "default": [] },
     "conflicts_with": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9-]{2,60}$" },
                         "uniqueItems": true, "default": [],
-                        "description": "Документы, которые расходятся с этим. Ссылка взаимная, allowed_roles одинаковые (правило 8 загрузчика)" },
+                        "description": "Документы, которые расходятся с этим. Ссылка взаимная, allowed_roles одинаковые (правило 7 загрузчика)" },
     "test_only":      { "type": "boolean", "default": false },
     "summary":        { "type": "string", "minLength": 1, "maxLength": 300 }
   }
@@ -1787,7 +1794,7 @@ CREATE TABLE mock_access.decisions (
 | Данные | Путь | Кто загружает | Проверки при старте |
 |---|---|---|---|
 | Треки | `content/tracks/*.yaml` | `mcp-mocks` (`internal/tracks`) | 8 правил `11` §1.12 |
-| База знаний | `content/kb/*.md` | `mcp-mocks` (`internal/kb`) | 9 правил (`11` §2.10.3 + правило 8 патча `17`) |
+| База знаний | `content/kb/*.md` | `mcp-mocks` (`internal/kb`) | 8 правил (`11` §2.10.3; `conflicts_with` — правило 7) |
 | Каталог доступов | `content/access/catalog.yaml` | `mcp-mocks` (`mcpmocks/catalog`) | `11` §3.10.6 + `access_level`, `approver` |
 | Сотрудники | `content/seeds/employees.yaml` | `api` и `mcp-mocks` (`internal/employees`) | трек существует, наставник существует |
 | Словарь demo | `internal/agent/rules/intents.ru.yaml` | `api` | схема словаря, уникальность фраз |
@@ -1913,7 +1920,7 @@ scripts/coverage-check.sh "$OUT/go-app.txt" 80     # жёсткий порог C
 | 1. HTTP | Сессия → `actor` (роль и личность только отсюда), same-origin `Origin`, лимиты, схема тела (`additionalProperties: false`), грамматика payload | `internal/auth`, валидатор OpenAPI, `internal/httpapi` |
 | 2. Оркестратор | Роль × инструмент × объект перед каждым MCP-вызовом; маршруты стажёра для наставника; повторная проверка при `confirm` | `internal/agent/guard`, `internal/actions` |
 | 3. Имитация | Повторная проверка роли и связи «наставник–стажёр», переходы FSM, идемпотентность | `internal/mcpmocks/*` |
-| Поиск | `allowed_roles @> ARRAY[role]` в `WHERE`; закрытые — только `slug, title` при `disclose_title`; `conflicts_with` — только между документами с одинаковыми правами (правило 8) | `internal/mcpmocks/knowledge`, `internal/kb` |
+| Поиск | `allowed_roles @> ARRAY[role]` в `WHERE`; закрытые — только `slug, title` при `disclose_title`; `conflicts_with` — только между документами с одинаковыми правами (правило 7) | `internal/mcpmocks/knowledge`, `internal/kb` |
 | Данные | Только синтетика; маскирование ПДн до БД, логов и LLM; нет полей «причина», «сумма»; обоснование доступа формирует сервер | `internal/agent/pii`, контракты |
 | Фронт | Текст как текст, санитайзер markdown, CSP | `web/` |
 | Секреты | Только env; `.env` не в git; ключ LLM не в логах и не в `/api/llm/health` | `internal/config` |
@@ -1936,6 +1943,8 @@ scripts/coverage-check.sh "$OUT/go-app.txt" 80     # жёсткий порог C
 ---
 
 ## 16. Правки к другим документам (промт 3.0, вместе с патчем `17`)
+**Статус: перенесено 11.11.2026** в `09` v1.3, `10` v1.3, `11` v1.2 (`17` раздел 4).
+
 1. **`09`, `10`, `11`:** пути `docs/contracts/…` → `contracts/…`; `tracks/` → `content/tracks/`; `kb/` → `content/kb/`; `access/catalog.yaml` → `content/access/catalog.yaml`.
 2. **`10` §10, `11` §3.12:** ответ `confirm` — `{result: RequestView, reply}`; `RequestView` — единый вид заявки (§6). Поля `10` (`request_id`, `status`, `date_from`, `date_to`, `working_days`) в нём есть.
 3. **`10` §11.6, `11` §0.3:** флаги имитаций хранятся в `mock_admin.flags` (`FlagProvider` имитации); `POST /api/demo/flags` проксирует в `MCP_MOCKS_ADMIN_URL/demo/flags`. Белый список не меняется.
@@ -1959,8 +1968,8 @@ scripts/coverage-check.sh "$OUT/go-app.txt" 80     # жёсткий порог C
 | `REGISTRY_PREFIX` не охватывает `FROM` в Dockerfile | Сборка без Docker Hub падает | `ARG REGISTRY_PREFIX` в каждом Dockerfile, `build.args` в compose; проверить на C0 |
 
 Открытые вопросы:
-- Версии Go, Node, PostgreSQL, Redis — зафиксировать в README на C0 (если каркас уже сделан — сверить с §4.1).
-- Порты: если C0 уже выбрал другие значения, правы `.env.example` и README — обновить §4.3 при переносе в `docs/`.
+- ~~Версии Go, Node, PostgreSQL, Redis~~ — закрыто на C0: Go 1.26, Node 24 LTS, PostgreSQL 18, Redis 8, nginx 1.28, Alpine 3.22; таблица версий — в README.
+- ~~Порты~~ — закрыто на C0: `WEB_PORT=8380`, `GRAFANA_PORT=8381`, как в §4.3.
 
 ---
 
