@@ -1,89 +1,134 @@
-package server
+package server_test
 
 import (
 	"context"
-	"encoding/binary"
+	"encoding/json"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
-	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/GogaBalenci/avito_ai_buddy/content"
+	"github.com/GogaBalenci/avito_ai_buddy/contracts"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/mockstest"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/server"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/testkit"
 )
 
-// fakePostgres answers SSLRequest with 'N', like a server without TLS.
-func fakePostgres(t *testing.T) string {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { ln.Close() })
-	go func() {
-		for {
-			c, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			buf := make([]byte, 8)
-			if _, err := io.ReadFull(c, buf); err == nil && binary.BigEndian.Uint32(buf[4:]) == 80877103 {
-				_, _ = c.Write([]byte{'N'})
-			}
-			c.Close()
+// C-11 (and M-14, KM-12, XM-14 as endpoints get tools): tools/list declares
+// exactly the schemas from contracts/.
+func TestToolsListMatchesContracts(t *testing.T) {
+	env := mockstest.Start(t, testkit.NewClock(testkit.Today))
+	for _, ep := range []string{"checklist"} {
+		client := mcp.NewClient(&mcp.Implementation{Name: "t", Version: "1"}, nil)
+		sess, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: env.URL + "/mcp/" + ep}, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}()
-	return ln.Addr().String()
-}
-
-func TestHandler(t *testing.T) {
-	h, err := NewHandler(config.Config{DatabaseURL: "postgres://" + fakePostgres(t) + "/db"},
-		slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for path, want := range map[string]int{
-		"/healthz":             http.StatusOK,
-		"/mcp/absences":        http.StatusNotImplemented,
-		"/internal/demo/reset": http.StatusNotImplemented,
-	} {
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
-		if rec.Code != want {
-			t.Fatalf("%s: code = %d, want %d", path, rec.Code, want)
+		res, err := sess.ListTools(context.Background(), nil)
+		if err != nil {
+			t.Fatal(err)
 		}
+		if len(res.Tools) == 0 {
+			t.Fatalf("%s: no tools", ep)
+		}
+		for _, tool := range res.Tools {
+			for kind, got := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
+				want, err := contracts.Bundle(ep + "/" + tool.Name + "." + kind + ".v1.json")
+				if err != nil {
+					t.Fatal(err)
+				}
+				gb, _ := json.Marshal(got)
+				wb, _ := json.Marshal(want)
+				var g, w any
+				_ = json.Unmarshal(gb, &g)
+				_ = json.Unmarshal(wb, &w)
+				if !reflect.DeepEqual(g, w) {
+					t.Errorf("%s.%s %s schema differs from contracts", ep, tool.Name, kind)
+				}
+			}
+		}
+		_ = sess.Close()
 	}
 }
 
-func TestNewHandlerBadURL(t *testing.T) {
-	if _, err := NewHandler(config.Config{DatabaseURL: "http://x"}, slog.Default()); err == nil {
-		t.Fatal("expected error")
+func TestHealthzAndDemoEndpoints(t *testing.T) {
+	env := mockstest.Start(t, testkit.NewClock(testkit.Today))
+	get := func(path string) (int, string) {
+		r, err := http.Get(env.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		b, _ := io.ReadAll(r.Body)
+		return r.StatusCode, string(b)
+	}
+	post := func(path, body string) (int, string) {
+		r, err := http.Post(env.URL+path, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		b, _ := io.ReadAll(r.Body)
+		return r.StatusCode, string(b)
+	}
+	if code, body := get("/healthz"); code != 200 || !strings.Contains(body, `"postgres":true`) {
+		t.Fatalf("healthz %d %s", code, body)
+	}
+	if code, body := get("/internal/demo/flags"); code != 200 || !strings.Contains(body, "mock_absences_fault") {
+		t.Fatalf("flags %d %s", code, body)
+	}
+	if code, _ := post("/internal/demo/flags", `{"name":"mock_absences_fault","value":"unavailable"}`); code != 200 {
+		t.Fatal(code)
+	}
+	if code, _ := post("/internal/demo/flags", `{"name":"llm_enabled","value":"off"}`); code != 400 {
+		t.Fatal("non-white-listed flag accepted")
+	}
+	if code, _ := post("/internal/demo/flags", `{`); code != 400 {
+		t.Fatal("bad body")
+	}
+	ctx := context.Background()
+	if _, err := env.Pool.Exec(ctx, `UPDATE mock_checklist.progress SET status = 'done' WHERE step_id = 'be-1.11'`); err != nil {
+		t.Fatal(err)
+	}
+	if code, body := post("/internal/demo/reset", ``); code != 204 {
+		t.Fatalf("reset %d %s", code, body)
+	}
+	var st, fault string
+	_ = env.Pool.QueryRow(ctx, `SELECT status FROM mock_checklist.progress WHERE employee_id = 'u-intern-be' AND step_id = 'be-1.11'`).Scan(&st)
+	_ = env.Pool.QueryRow(ctx, `SELECT value FROM mock_admin.flags WHERE name = 'mock_absences_fault'`).Scan(&fault)
+	if st != "in_progress" || fault != "off" {
+		t.Fatalf("after reset: %s %s", st, fault)
+	}
+	if env.Mocks.Flags.Get(ctx, "nope") != "" || env.Mocks.Flags.Get(ctx, "access_mentor_approval") != "on" {
+		t.Fatal("flag get")
 	}
 }
 
-func TestRun(t *testing.T) {
-	env := map[string]string{"HTTP_ADDR": "127.0.0.1:0", "DATABASE_URL": "postgres://db", "LOG_LEVEL": "error"}
-	ctx, cancel := context.WithCancel(context.Background())
-	ready := make(chan net.Addr, 1)
-	done := make(chan error, 1)
-	go func() { done <- Run(ctx, func(k string) string { return env[k] }, func(a net.Addr) { ready <- a }) }()
-	select {
-	case <-ready:
-	case err := <-done:
-		t.Fatal(err)
-	case <-time.After(5 * time.Second):
-		t.Fatal("not ready")
-	}
-	cancel()
-	if err := <-done; err != nil {
+// P-A15: invalid content stops the service with the file and rule in the error.
+func TestLoadContentFailFast(t *testing.T) {
+	if _, err := server.LoadContent(content.FS()); err != nil {
 		t.Fatal(err)
 	}
-	if err := Run(context.Background(), func(string) string { return "" }, nil); err == nil {
-		t.Fatal("expected config error")
+	bad := fstest.MapFS{"kb/x.md": {Data: []byte("no front matter")}}
+	if _, err := server.LoadContent(bad); err == nil || !strings.Contains(err.Error(), "x.md") {
+		t.Fatalf("err = %v", err)
 	}
-	bad := map[string]string{"DATABASE_URL": "http://x"}
-	if err := Run(context.Background(), func(k string) string { return bad[k] }, nil); err == nil {
-		t.Fatal("expected handler error")
+}
+
+func TestRunAndErrors(t *testing.T) {
+	if err := server.Run(context.Background(), func(string) string { return "" }, nil); err == nil {
+		t.Fatal("config error expected")
+	}
+	cfg, _ := config.LoadMocks(func(k string) string { return map[string]string{"DATABASE_URL": "http://x"}[k] })
+	if _, err := server.New(context.Background(), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), testkit.NewClock(time.Now()), server.Options{}); err == nil {
+		t.Fatal("bad url accepted")
 	}
 }

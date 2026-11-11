@@ -24,6 +24,7 @@ linters:
         app-does-not-import-mocks:
           files:
             - "$all"
+            - "!$test" # integration tests run the real mocks in-process (12 §11.1)
             - "!**/internal/mcpmocks/**"
             - "!**/cmd/mcp-mocks/**"
           deny:
