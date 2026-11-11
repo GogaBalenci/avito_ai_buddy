@@ -40,7 +40,7 @@ func (s *Server) PostChatMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "BAD_REQUEST", "Нужно ровно одно из полей text и payload", nil)
 		return
 	}
-	cmid := uuid.UUID(body.ClientMessageId)
+	cmid := body.ClientMessageId
 	key := msgKey(a.UserID, cmid)
 
 	// A repeat returns the saved reply without processing, events or history.
@@ -177,7 +177,7 @@ func (s *Server) saveExchange(ctx context.Context, a actor.Actor, in router.Inpu
 			return err
 		}
 		_, err := tx.Exec(ctx, `INSERT INTO app.agent_replies (reply_id, message_id, user_id, intent, mode, body, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`, uuid.UUID(out.Reply.ReplyId), msgID, a.UserID, string(out.Reply.Intent),
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`, out.Reply.ReplyId, msgID, a.UserID, string(out.Reply.Intent),
 			string(out.Reply.Mode), body, now)
 		return err
 	})

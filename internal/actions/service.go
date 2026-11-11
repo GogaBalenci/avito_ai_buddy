@@ -202,11 +202,12 @@ func (s *Service) Confirm(ctx context.Context, a actor.Actor, id string) (Confir
 			time.Sleep(50 * time.Millisecond)
 		}
 		st = s.Store.State(ctx, id)
-		if st == StateActive {
+		switch st {
+		case StateActive:
 			if st, err = s.Store.Begin(ctx, id, a.UserID); err != nil {
 				return Confirmed{}, fail(503, "UNAVAILABLE", "Сервис временно недоступен")
 			}
-		} else if st == StateConfirming {
+		case StateConfirming:
 			st = "ok" // still confirming: repeat the idempotent call with the same key
 		}
 	}

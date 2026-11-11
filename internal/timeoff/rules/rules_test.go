@@ -80,7 +80,8 @@ func TestWorkingDaysAndHelpers(t *testing.T) {
 	if WorkingDays(d("2026-11-13"), d("2026-11-16")) != 2 || WorkingDays(d("2026-11-16"), d("2026-11-20")) != 5 || WorkingDays(d("2026-11-13"), d("2026-11-13")) != 1 {
 		t.Fatal("WorkingDays")
 	}
-	if ParamsHash("2026-11-13", "2026-11-13") != ParamsHash("2026-11-13", "2026-11-13") || len(ParamsHash("a", "b")) != 64 {
+	h1, h2 := ParamsHash("2026-11-13", "2026-11-13"), ParamsHash("2026-11-13", "2026-11-13")
+	if h1 != h2 || h1 == ParamsHash("2026-11-13", "2026-11-14") || len(ParamsHash("a", "b")) != 64 {
 		t.Fatal("hash")
 	}
 	from, to := SeedDates(d("2026-11-10"))

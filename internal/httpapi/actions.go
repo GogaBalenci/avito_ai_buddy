@@ -4,8 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	openapi_types "github.com/oapi-codegen/runtime/types"
-
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/reqctx"
@@ -29,7 +27,7 @@ func writeActionError(w http.ResponseWriter, r *http.Request, err error) {
 
 // pendingAction converts a draft to PendingAction / ActionView.
 func actionView(st *actions.Store, d actions.Draft) api.ActionView {
-	v := api.ActionView{ActionId: openapi_types.UUID(mustUUID(d.ActionID)), Kind: api.RequestKind(d.Kind),
+	v := api.ActionView{ActionId: mustUUID(d.ActionID), Kind: api.RequestKind(d.Kind),
 		State: api.ActionViewState(st.ViewState(d)), ExpiresAt: d.ExpiresAt, Summary: summaryJSON(d)}
 	if len(d.Result) > 0 {
 		var c actions.Confirmed

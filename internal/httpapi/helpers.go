@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
-	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 )
 
@@ -32,14 +30,6 @@ func summaryJSON(d actions.Draft) api.ActionSummary {
 
 // pendingJSON converts a draft to PendingAction.
 func pendingJSON(st *actions.Store, d actions.Draft) api.PendingAction {
-	return api.PendingAction{ActionId: openapi_types.UUID(mustUUID(d.ActionID)), Kind: api.RequestKind(d.Kind),
+	return api.PendingAction{ActionId: mustUUID(d.ActionID), Kind: api.RequestKind(d.Kind),
 		State: api.PendingActionState(st.ViewState(d)), ExpiresAt: d.ExpiresAt, Summary: summaryJSON(d)}
-}
-
-func dateOf(s string) *openapi_types.Date {
-	d, err := clock.ParseISO(s)
-	if err != nil {
-		return nil
-	}
-	return &openapi_types.Date{Time: d}
 }

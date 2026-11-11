@@ -5,7 +5,6 @@ package reply
 
 import (
 	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 )
@@ -13,8 +12,8 @@ import (
 // New returns an empty reply in demo mode with the hello mascot.
 func New(clientMessageID uuid.UUID, intent string) *api.AgentReply {
 	return &api.AgentReply{
-		ReplyId:         openapi_types.UUID(uuid.New()),
-		ClientMessageId: openapi_types.UUID(clientMessageID),
+		ReplyId:         uuid.New(),
+		ClientMessageId: clientMessageID,
 		Mode:            api.AgentReplyModeDemo,
 		Intent:          api.AgentReplyIntent(intent),
 		MascotState:     api.MascotStateHello,
