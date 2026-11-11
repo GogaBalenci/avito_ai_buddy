@@ -1,18 +1,37 @@
-// Package app wires the api service: configuration, dependencies, HTTP routes.
-// Business routes from api/openapi.yaml are added by checkpoints (12 §6);
-// until then /api/* answers 501.
+// Package app wires the api service: configuration, storage, migrations,
+// seeds and the HTTP API (12 §3.4). cmd/api only calls Run.
 package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+
+	"github.com/GogaBalenci/avito_ai_buddy/content"
+	"github.com/GogaBalenci/avito_ai_buddy/contracts"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/demo"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/employees"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/events"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/flags"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/health"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/httpapi"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpx"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/migrate"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/store"
+	"github.com/GogaBalenci/avito_ai_buddy/migrations"
 )
 
 // Run loads configuration and serves until ctx is canceled.
@@ -22,26 +41,127 @@ func Run(ctx context.Context, getenv config.Getenv, ready func(net.Addr)) error 
 		return fmt.Errorf("config: %w", err)
 	}
 	log := httpx.NewLogger(cfg.LogLevel, "api")
-	h, err := NewHandler(cfg, log)
+	if cfg.LLM.Misconfigured != "" {
+		log.Warn("LLM is not configured, working in demo mode", "missing", cfg.LLM.Misconfigured)
+	}
+	a, err := New(ctx, cfg, log, clock.Real{Loc: cfg.Location})
 	if err != nil {
 		return err
 	}
-	return httpx.Serve(ctx, cfg.Addr, h, log, ready)
+	defer a.Close()
+	return httpx.Serve(ctx, cfg.Addr, a.Handler, log, ready)
 }
 
-// NewHandler builds the HTTP routes of api.
-func NewHandler(cfg config.Config, log *slog.Logger) (http.Handler, error) {
-	pg, err := health.Postgres(cfg.DatabaseURL)
+// App is the assembled api.
+type App struct {
+	Handler http.Handler
+	Server  *httpapi.Server
+	Pool    *pgxpool.Pool
+	Redis   *redis.Client
+}
+
+// Close releases connections.
+func (a *App) Close() {
+	if a.Redis != nil {
+		_ = a.Redis.Close()
+	}
+	if a.Pool != nil {
+		a.Pool.Close()
+	}
+}
+
+// New connects to storage, applies migrations and seeds and builds the API.
+func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clock) (*App, error) {
+	if err := contracts.Check(); err != nil {
+		return nil, fmt.Errorf("contracts: %w", err)
+	}
+	pgProbe, err := health.Postgres(cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("DATABASE_URL: %w", err)
 	}
-	rd, err := health.Redis(cfg.RedisURL)
+	rdProbe, err := health.Redis(cfg.RedisURL)
 	if err != nil {
 		return nil, fmt.Errorf("REDIS_URL: %w", err)
 	}
+	ropts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		return nil, fmt.Errorf("REDIS_URL: %w", err)
+	}
+	pool, err := connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+	a := &App{Pool: pool, Redis: redis.NewClient(ropts)}
+	if _, err := migrate.Apply(ctx, pool, migrations.App(), "app"); err != nil {
+		a.Close()
+		return nil, fmt.Errorf("migrations: %w", err)
+	}
+	seeds, _ := fs.Sub(content.FS(), "seeds")
+	people, err := employees.Load(seeds, nil)
+	if err != nil {
+		a.Close()
+		return nil, err
+	}
+	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people, Getenv: cfg.Getenv}
+	if seeded, err := seeder.SeedIfEmpty(ctx); err != nil {
+		a.Close()
+		return nil, fmt.Errorf("seeds: %w", err)
+	} else if seeded {
+		log.Info("demo seeds applied")
+	}
+	notes := map[string]string{}
+	for _, p := range people {
+		notes[p.UserID] = p.Description
+	}
+	emp := &store.Employees{Pool: pool}
+	srv := &httpapi.Server{Deps: httpapi.Deps{
+		Cfg: cfg, Log: log, Pool: pool, Redis: a.Redis, Clock: clk,
+		Sessions:     &auth.Sessions{Redis: a.Redis, Employees: emp, Clock: clk, TTL: cfg.SessionTTL, Secure: cfg.CookieSecure},
+		Limiter:      &auth.Limiter{Redis: a.Redis, Clock: clk, Max: 20},
+		Employees:    emp,
+		Accounts:     emp,
+		AccountNotes: notes,
+		Events:       &events.PG{Pool: pool, Clock: clk},
+		Flags:        &flags.PG{Pool: pool},
+		Tools:        &mcpclient.MCP{URLs: cfg.MCPURLs, Timeout: cfg.MCPTimeout, Log: log},
+		Guard:        &guard.Guard{Employees: emp},
+		Health:       health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
+	}}
+	h, err := httpapi.Handler(srv)
+	if err != nil {
+		a.Close()
+		return nil, err
+	}
+	a.Handler, a.Server = h, srv
+	return a, nil
+}
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /healthz", health.Handler(map[string]health.Probe{"postgres": pg, "redis": rd}, log))
-	mux.HandleFunc("/api/", httpx.NotImplemented)
-	return httpx.LogRequests(log, mux), nil
+// connectWait is how long New waits for PostgreSQL (tests shorten it).
+var connectWait = 30 * time.Second
+
+// connect waits up to 30 s for PostgreSQL (compose starts api after the
+// healthcheck, but a restart of postgres must not crash-loop the api).
+func connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("DATABASE_URL: %w", err)
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	deadline := time.Now().Add(connectWait)
+	for {
+		pctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		err = pool.Ping(pctx)
+		cancel()
+		if err == nil {
+			return pool, nil
+		}
+		if time.Now().After(deadline) || ctx.Err() != nil {
+			pool.Close()
+			return nil, errors.Join(errors.New("postgres is not reachable"), err)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 }
