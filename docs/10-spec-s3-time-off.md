@@ -1,9 +1,16 @@
 # Спецификация S3 «Оформление отгула»
 
-Версия 1.2 · 10.11.2026 · статус: после ревью (промт 1.3)
+Версия 1.3 · 11.11.2026 · статус: патч `17` перенесён (промт 3.0)
 Источники: `02-decisions.md` v3.5, `09-spec-agent.md` v1.2 (AG-01…AG-26, вход чата §2.1, приоритет защитных тем §3.3, черновики §8.1, `AgentReply` §9, сбои LLM §13), `11-spec-s1-s2-s4.md` v1.0 (общие `actor`/`error`, «Мой путь», «Мои стажёры», `GET /api/requests`, база знаний), `08-intern-journey.md` (S3 — событие вне чек-листа), `01-case-brief.md` (пример с отгулом, ограничения 2, 3, 5, 6, 9, 10).
 **S3 — часть основного сценария (S1 + S3): по нему проверяют допуск.** Всё, что здесь помечено `SHALL`, должно работать в `LLM_PROVIDER=demo` из чистого клона.
 Окончательные пути, OpenAPI и схема БД — в `12-architecture.md`; матрица прав — в `13-permissions.md`. Если имена расходятся, правы `12`/`13`, а этот файл нужно поправить.
+
+**Изменения v1.3 (Q&A 10.11 и архитектура 11.11, `17-qa-patch.md`):**
+- Режим сбоя `slow` реализуется последним; если к C5 его нет — убирается из флага, демо-панели и README (§11.6).
+- Статус `registered` имитации: в реальном сервисе согласование встроено, перевод статусов делает адаптер MCP-сервера (§11).
+- Пути и имена по `12-architecture.md`: схемы — `contracts/…`, адрес `MCP_ABSENCES_URL` окончательный; ответ `confirm` — `{result: RequestView, reply: AgentReply}`; флаги имитаций — в `mock_admin.flags` через `MCP_MOCKS_ADMIN_URL`; вычисляемое состояние черновика `expired`; `Origin` — same-origin по `Host` или `ALLOWED_ORIGINS`; тесты гонок — на PostgreSQL из compose.
+- OpenSpec: требования — в `openspec/changes/add-time-off/specs/time-off/spec.md` как `ADDED Requirements`, в `openspec/specs/` их переносит `openspec archive` после реализации (§15, §18).
+- Правки к `09` и `11` из §19 перенесены (`09` v1.3, `11` v1.1).
 
 **Изменения v1.2 (ревью):**
 - Вход по `09` §2.1: `POST /api/chat/messages` с `client_message_id` и ровно одним из `text`/`payload`; кнопки «Оформить отгул» шлют `payload: "intent:time_off"` с новым `client_message_id`; повтор того же id не открывает вторую форму и не дублирует события (§5.1).
@@ -229,7 +236,7 @@ Front matter по `11` §2.5.1: `slug: time-off-test-order`, `title: Как оф
 
 Принципы:
 - Роль и личность — только из сессии. Поля личности нет ни в `IntentResult`, ни в `payload`, ни в теле `POST /api/actions`; лишние поля отклоняет схема (`additionalProperties: false`) (AG-03, AG-25).
-- Все изменяющие запросы — `POST` с проверкой заголовка `Origin` (`09` §11.7); cookie сессии `HttpOnly`, `SameSite=Lax`.
+- Все изменяющие запросы — `POST` с проверкой заголовка `Origin`: он должен совпадать с `scheme://Host` запроса (same-origin) или входить в `ALLOWED_ORIGINS` (`09` §11.7); cookie сессии `HttpOnly`, `SameSite=Lax`.
 - `mcp-mocks` доверяет `actor` из вызова, потому что вызывает его только оркестратор во внутренней сети compose (порт `mcp-mocks` не публикуется наружу). В проде на транспорте MCP — сервисный токен или mTLS; это строка в карте интеграций.
 - Нет полей «причина», «вид оплаты», «сумма» (AG-12, AG-13). Даты отгула не считаются чувствительными ПДн, но в события и логи не пишутся (§13).
 
@@ -260,7 +267,7 @@ Front matter по `11` §2.5.1: `slug: time-off-test-order`, `title: Как оф
 
 - После 422 или 503 черновик возвращается в `active` (повтор возможен до `expires_at`). После 422 карточка в UI возвращается в форму.
 - «Сбросить демо-данные» удаляет ключи `action:*` и `active_action:*` → старый `confirm` получает 404 (A15).
-- `GET /api/actions/{action_id}` отдаёт `{state, expires_at, summary, result}` — для карточек в истории чата.
+- `GET /api/actions/{action_id}` отдаёт `{state, expires_at, summary, result}` — для карточек в истории чата. Для черновика в `active` после `expires_at` он (и `pending_action.state`) отдаёт вычисляемое состояние `expired`; в Redis состояние не меняется.
 
 ---
 
@@ -343,9 +350,9 @@ stateDiagram-v2
 | `GET /api/time-off/config` | `{today, max_date, max_working_days: 5, horizon_days: 90, weekend_days: [6, 7]}` (ISO-день недели) | 200; TanStack `staleTime` 5 мин и `refetchOnWindowFocus` (смена дня) |
 | `POST /api/actions` | Тело `{kind: "time_off", params: {date_from, date_to}}` → валидация → черновик | 201 `{pending_action, notices}`; 400 (схема, лишние поля); 403; 422 `{errors: [{field, code, message, params}]}`; 429; 503 (Redis) |
 | `GET /api/actions/{action_id}` | Состояние черновика для истории чата | 200 `{state, expires_at, summary, result}`; 404 |
-| `POST /api/actions/{action_id}/confirm` | Подтверждение (§8.1) | 200 `{result: {request_id, status, date_from, date_to, working_days}, reply: AgentReply}`; 404; 409 (`IDEMPOTENCY_CONFLICT`, не ожидается); 410; 422; 429; 503 `{retryable: true}` |
+| `POST /api/actions/{action_id}/confirm` | Подтверждение (§8.1) | 200 `{result: RequestView, reply: AgentReply}` (`RequestView` — единый вид заявки, `12` §6; содержит `request_id`, `status`, `date_from`, `date_to`, `working_days`); 404; 409 (`IDEMPOTENCY_CONFLICT`, не ожидается); 410; 422; 429; 503 `{retryable: true}` |
 | `POST /api/actions/{action_id}/cancel` | Отмена черновика | 200; 404; 410 (уже не `active`) |
-| `GET /api/requests?kind=time_off&scope=upcoming\|all&employee_id=` | Заявки из нашей копии (§12.1), общий эндпоинт с S4 (`11` §3.12) | 200; 404 (чужой стажёр у наставника) |
+| `GET /api/requests?kind=time_off&scope=upcoming\|all&employee_id=` | Заявки из нашей копии (§12.1), общий эндпоинт с S4 (`11` §3.12); ответ — `RequestList` (`items: RequestView[]`) | 200; 404 (чужой стажёр у наставника) |
 
 `pending_action` для отгула: `{action_id, kind: "time_off", summary: {date_from, date_to, working_days}, expires_at}`.
 
@@ -355,13 +362,15 @@ stateDiagram-v2
 
 ## 11. MCP-инструменты endpoint `absences`
 
-Транспорт — MCP (Streamable HTTP) на `mcp-mocks`, путь `/mcp/absences`, адрес — переменная `MCP_ABSENCES_URL` (окончательное имя — `12`). Оркестратор вызывает инструменты через интерфейс `ToolClient` (`09` §13.3) и передаёт `request_id` в `_meta`. У инструментов объявлены `inputSchema` и `outputSchema`; `ToolClient` проверяет ответ по `outputSchema`, несовпадение → `INTERNAL` (A33). Успешный результат — `structuredContent` и дублирующий его JSON в `content[0].text`. Ошибка — `isError: true` и `structuredContent` по схеме ошибки (§11.4). Файлы схем — `docs/contracts/absences/*.json`.
+Транспорт — MCP (Streamable HTTP) на `mcp-mocks`, путь `/mcp/absences`, адрес — переменная `MCP_ABSENCES_URL` (`12` §4.4). Оркестратор вызывает инструменты через интерфейс `ToolClient` (`09` §13.3) и передаёт `request_id` в `_meta`. У инструментов объявлены `inputSchema` и `outputSchema`; `ToolClient` проверяет ответ по `outputSchema`, несовпадение → `INTERNAL` (A33). Успешный результат — `structuredContent` и дублирующий его JSON в `content[0].text`. Ошибка — `isError: true` и `structuredContent` по схеме ошибки (§11.4). Файлы схем — `contracts/absences/*.json`.
 
 **Как заменить на реальный сервис отсутствий:** указать `MCP_ABSENCES_URL` реального MCP-сервера с тем же контрактом. Если у реального сервиса другие статусы (например, «на согласовании»), их переводит в `registered`/`cancelled` тонкий адаптер на стороне MCP-сервера; код агента, форма и тесты поведения не меняются.
 
+**Статус `registered`.** По Q&A в реальном сервисе отсутствий согласование встроено (руководитель, затем HR BP или HR-админ). Статус `registered` имитации в проде заменяется статусами согласования; перевод статусов делает адаптер MCP-сервера, оркестратор и UI читают статус из ответа.
+
 ### 11.1 Общие схемы
 
-`docs/contracts/common/actor.v1.json` — общая для всех endpoint (`11` §0.2). Роль `system` (`user_id` вида `svc-…`) создаёт только внутренний код синхронизации бадди; `absences` её не принимает (A14).
+`contracts/common/actor.v1.json` — общая для всех endpoint (`11` §0.2). Роль `system` (`user_id` вида `svc-…`) создаёт только внутренний код синхронизации бадди; `absences` её не принимает (A14).
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -380,7 +389,7 @@ stateDiagram-v2
 }
 ```
 
-`docs/contracts/absences/request.v1.json`
+`contracts/absences/request.v1.json`
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -406,7 +415,7 @@ stateDiagram-v2
 ### 11.2 `create_request`
 Описание инструмента (поле `description` в MCP): «Создать заявку на отгул (тестовый сервис отсутствий). Без вида оплаты и без причины. Идемпотентно по idempotency_key.»
 
-Вход — `docs/contracts/absences/create_request.input.v1.json`
+Вход — `contracts/absences/create_request.input.v1.json`
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -428,7 +437,7 @@ stateDiagram-v2
 }
 ```
 
-Выход — `docs/contracts/absences/create_request.output.v1.json`
+Выход — `contracts/absences/create_request.output.v1.json`
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -459,7 +468,7 @@ stateDiagram-v2
 ### 11.3 `list_requests`
 Описание: «Список заявок на отгул. Стажёр — только свои; наставник — своих стажёров.»
 
-Вход — `docs/contracts/absences/list_requests.input.v1.json`
+Вход — `contracts/absences/list_requests.input.v1.json`
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -481,7 +490,7 @@ stateDiagram-v2
 }
 ```
 
-Выход — `docs/contracts/absences/list_requests.output.v1.json`
+Выход — `contracts/absences/list_requests.output.v1.json`
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -498,7 +507,7 @@ stateDiagram-v2
 ```
 Сортировка — по `date_from` по возрастанию. **Побочных эффектов нет.** Guard: стажёр с чужим `employee_id` или наставник без `employee_id` либо с чужим стажёром → `PERMISSION_DENIED`; роль `system` → `PERMISSION_DENIED`.
 
-### 11.4 Ошибки — `docs/contracts/common/error.v1.json`
+### 11.4 Ошибки — `contracts/common/error.v1.json`
 Схема общая для всех endpoint. Коды `NOT_FOUND`, `DUPLICATE_ACTIVE`, `ALREADY_DECIDED`, `STATUS_CONFLICT`, `TRANSITION_NOT_ALLOWED` используются в `checklist`, `knowledge` и `access` (`11`); `absences` их не возвращает.
 ```json
 {
@@ -539,8 +548,9 @@ stateDiagram-v2
 | `UNAVAILABLE`, `INTERNAL`, сеть, таймаут, ответ не по `outputSchema` | 503 `{retryable: true}` | A10/A11/A33, черновик → `active` до `expires_at` |
 
 ### 11.6 Имитация сбоя и демо-панель (чтобы эксперт сам проверил A10)
-- Runtime-флаг `mock_absences_fault` в таблице флагов (`FlagProvider`), значения `off | unavailable | slow`. `slow` — задержка 4 с, больше `MCP_TIMEOUT_MS`, то есть путь таймаута.
-- Переключается в демо-панели (там же, где «Сбросить демо-данные») переключателем «Имитировать сбой сервиса отсутствий» → `POST /api/demo/flags {name, value}`.
+- Runtime-флаг `mock_absences_fault` хранит `mcp-mocks` в таблице `mock_admin.flags` (`FlagProvider` имитации), значения `off | unavailable | slow`. `slow` — задержка 4 с, больше `MCP_TIMEOUT_MS`, то есть путь таймаута.
+- `slow` реализуется последним. Если к C5 его нет — `slow` убирается из перечисления флага, из демо-панели и из README, а AC-22, M-10 и A-14 помечаются «после MVP» (`02` v3.8, S3).
+- Переключается в демо-панели (там же, где «Сбросить демо-данные») переключателем «Имитировать сбой сервиса отсутствий» → `POST /api/demo/flags {name, value}`; API проверяет белый список и проксирует изменение в `MCP_MOCKS_ADMIN_URL/demo/flags`. Флаги приложения (`llm_enabled`, `llm_rephrase`) лежат отдельно, в `app.feature_flags`.
 - Демо-эндпоинты (`/api/demo/*`) существуют только при `DEMO_TOOLS_ENABLED=true` (по умолчанию `true` в `.env.example`, в описании «как внедрить» — `false`). Имя флага проверяется по белому списку `{mock_absences_fault, access_mentor_approval}`; `llm_enabled` и прочие флаги пилота через демо-панель не меняются (иначе любой пользователь мог бы выключить LLM всем).
 - Флаг читается на каждом вызове — без перезапуска (`02`, feature flags). «Сбросить демо-данные» возвращает `off`.
 - Флаг влияет только на `create_request` (запись). Чтение не трогает, иначе ломается открытие формы.
@@ -617,7 +627,7 @@ GROUP BY 1 ORDER BY 1;
 | Таймаут MCP | `MCP_TIMEOUT_MS=3000` (в `.env.example`) | тест с `slow` |
 | Часовой пояс | «Сегодня» — только на сервере (Europe/Moscow); фронт берёт `today` из конфига | тест с `Clock` и Vitest с `TZ=America/Los_Angeles` |
 | Идемпотентность | Один `action_id` → максимум одна заявка при любом числе `confirm` и параллельных вызовов | тест с 10 горутинами + уникальный индекс |
-| Гонка двух черновиков | Два разных `action_id` с пересекающимися датами, подтверждённые параллельно → одна заявка + один `OVERLAP` | тест с горутинами против реального PostgreSQL (testcontainers или compose в CI, решение — `12`) |
+| Гонка двух черновиков | Два разных `action_id` с пересекающимися датами, подтверждённые параллельно → одна заявка + один `OVERLAP` | тест с горутинами против реального PostgreSQL (PostgreSQL из compose, `12` §11) |
 | Устойчивость к LLM | S3 проходится при `demo`, при недоступной модели, при неполной конфигурации и при 401 | тесты A-04, A-27, A-28 |
 | Логи | Без дат отсутствия и текста сообщений; `request_id`, `action_id`, внешний номер заявки, коды ошибок | ревью + тест логгера |
 
@@ -625,7 +635,7 @@ GROUP BY 1 ORDER BY 1;
 
 ## 15. Требования и критерии приёмки (OpenSpec)
 
-Этот раздел переносится как есть в `openspec/specs/time-off/spec.md`. Сценарии в формате GIVEN/WHEN/THEN — это и есть критерии приёмки (`AC-xx`). Во всех сценариях, если не сказано иное: `today = 2026-11-10` (вторник), время 12:00 Europe/Moscow, `LLM_PROVIDER=demo`, пользователь — демо-стажёр Backend `u-intern-be`, наставник — `u-mentor`, сид `ABS-000101` перенесён на `2026-11-16..2026-11-17` (фикстура теста).
+Этот раздел переносится в `openspec/changes/add-time-off/specs/time-off/spec.md` как `## ADDED Requirements`; после реализации `openspec archive add-time-off` переносит требования в `openspec/specs/time-off/spec.md`. Сценарии в формате GIVEN/WHEN/THEN — это и есть критерии приёмки (`AC-xx`). Во всех сценариях, если не сказано иное: `today = 2026-11-10` (вторник), время 12:00 Europe/Moscow, `LLM_PROVIDER=demo`, пользователь — демо-стажёр Backend `u-intern-be`, наставник — `u-mentor`, сид `ABS-000101` перенесён на `2026-11-16..2026-11-17` (фикстура теста).
 
 ```markdown
 # time-off Specification
@@ -954,7 +964,7 @@ LLM во всех тестах — заглушка `LLMClient`. Часы — `C
 | M-11 | `list_requests` стажёра: только свои, по `date_from`; с чужим `employee_id` → `PERMISSION_DENIED` |
 | M-12 | `list_requests` наставника: свой стажёр (сиды: оба демо-стажёра) — ok; фикстура с чужим стажёром или без `employee_id` → `PERMISSION_DENIED` |
 | M-13 | `date_to_gte` и `statuses` фильтруют корректно; `limit` > 50 → ошибка схемы |
-| M-14 | Контракт: `tools/list` отдаёт `inputSchema`/`outputSchema`, совпадающие с файлами в `docs/contracts/absences/` (защита от расхождения кода и документации) |
+| M-14 | Контракт: `tools/list` отдаёт `inputSchema`/`outputSchema`, совпадающие с файлами в `contracts/absences/` (защита от расхождения кода и документации) |
 | M-15 | `params_hash`, посчитанный в Go-хелпере оркестратора и в mock, совпадает для одинаковых дат и разных порядков ключей во входном JSON |
 
 ### 16.3 API и оркестратор
@@ -1052,22 +1062,22 @@ LLM во всех тестах — заглушка `LLMClient`. Часы — `C
 
 ```
 openspec/
-  specs/
-    time-off/spec.md                    # §15 как есть
   changes/
     add-time-off/
       proposal.md                       # §1, §2, §4 (зачем, для кого, что не делаем)
       design.md                         # §5–§12, §14 (поток, правила, черновики, форма, MCP, хранение)
       tasks.md                          # список ниже
-docs/contracts/common/{actor,error}.v1.json
-docs/contracts/absences/{request,create_request.input,create_request.output,list_requests.input,list_requests.output}.v1.json
+      specs/time-off/spec.md            # §15 как ADDED Requirements
+  specs/                                # заполняет `openspec archive add-time-off` после реализации
+contracts/common/{actor,error}.v1.json
+contracts/absences/{request,create_request.input,create_request.output,list_requests.input,list_requests.output}.v1.json
 docs/specs/s3/validation-cases.json
 ```
-В CI: `openspec validate --strict` (в каждом требовании есть SHALL, у каждого — хотя бы один сценарий) и проверка, что ответы `mcp-mocks` проходят JSON Schema из `docs/contracts` (M-14). Спецификация и схемы коммитятся до кода (`02`, «Качество»).
+В CI: `openspec validate --strict` (в каждом требовании есть SHALL, у каждого — хотя бы один сценарий) и проверка, что ответы `mcp-mocks` проходят JSON Schema из `contracts/` (M-14). Спецификация и схемы коммитятся до кода (`02`, «Качество»).
 
 **tasks.md** — порядок под чекпоинт C3 (12.11 18:00). Сначала то, без чего нет допуска:
 1. [ ] `internal/timeoff/rules` + `validation-cases.json` + табличный тест (V-01…V-21).
-2. [ ] Схемы `docs/contracts/absences/*` и `common/*`.
+2. [ ] Схемы `contracts/absences/*` и `common/*`.
 3. [ ] `mcp-mocks/absences`: `create_request`, `list_requests`, схема `mock_absences`, уникальный индекс `idempotency_key`, advisory lock, guard; тесты M-01…M-15.
 4. [ ] Черновики (общие с S4, `09` §8.1): модель §8.1, `POST /api/actions`, `GET /api/actions/{id}`, `confirm`, `cancel`; тесты A-07…A-11, A-16, A-20, A-36.
 5. [ ] Оркестратор: маршрут `time_off`, приоритет защитных тем, копия в `time_off_requests`, события; тесты A-01…A-06, A-12…A-19, A-21…A-31.
@@ -1087,17 +1097,16 @@ docs/specs/s3/validation-cases.json
 **Риск, который принимаем:** праздники не учитываются, поэтому в пределах 90 дней можно оформить отгул на 1–8 января. Это записано в тексте тестового порядка и в README; производственный календарь — roadmap.
 
 **Открытые вопросы:**
-- Testcontainers или PostgreSQL из compose для тестов M-04, M-05 в CI — решить в `12`. Без реальной БД гонку не проверить.
 - `MCP_TIMEOUT_MS=3000` и задержка `slow` 4 с — проверить на медленной машине эксперта, не даёт ли холодный старт ложных таймаутов.
-- Связь «наставник–стажёр»: в `11` принято «оба стажёра у одного наставника»; подтвердить в `13`. M-12 на «чужом стажёре» проверяется фикстурой.
+- ~~Связь «наставник–стажёр»~~ — подтверждено в `13` §2: оба стажёра у `u-mentor`; M-12 на «чужом стажёре» проверяется фикстурой `u-intern-other`.
 
-**Правки к `09` (при следующем ревью, по решению v1.2 этого файла):**
+**Правки к `09` (перенесены в `09` v1.3, 11.11):**
 - §8.1, шаг 4: вместо «черновик удаляется» — «черновик переходит в `confirmed` и хранит результат 24 ч; повторный `confirm` возвращает его». Истечение — по полю `expires_at`, ключ Redis живёт 24 ч (иначе 410 невозможен).
 - §8.1: `confirm` отменённого или заменённого черновика → 410 (сейчас не описано).
 - §2.1: добавить `GET /api/actions/{action_id}` как источник состояния карточек черновиков в истории.
 - §9.1: `notices` дополнить значением `overlap_unchecked`.
 
-**Правки к `11` (при ревью):**
+**Правки к `11` (перенесены в `11` v1.1, 10.11):**
 - §1.10: `GET /api/mentor/interns` возвращает `upcoming_time_off: [{request_id, date_from, date_to}]` (до 2).
 - §3.12: `GET /api/requests` принимает фильтры `kind=time_off|access`, `scope=upcoming|all` и для наставника `employee_id` своего стажёра (иначе 404). Отдельного `GET /api/time-off/requests` нет.
 - §1.13: «Сбросить демо-данные» очищает также ключи `client_message_id` и `action:*` в Redis.

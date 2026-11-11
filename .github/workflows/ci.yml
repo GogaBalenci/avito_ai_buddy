@@ -31,6 +31,13 @@ jobs:
         with:
           # latest v2: a pinned old release may refuse to lint code for a newer Go
           version: latest
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: OpenSpec (specs before code)
+        env:
+          OPENSPEC_TELEMETRY: "0"
+        run: npx -y @fission-ai/openspec@1.17.0 validate --all --strict --no-interactive
 
   test:
     runs-on: ubuntu-latest
