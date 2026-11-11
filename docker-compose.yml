@@ -162,7 +162,7 @@ services:
       args: *build-args
     environment:
       BASE_URL: http://web
-    # Заглушка до C3: пока проверяет, что web отдаёт SPA и проксирует /healthz в api
+    # SPA и /healthz через web, затем основной сценарий S1 + S3 через API (сбрасывает демо-данные)
     command: ["sh", "scripts/smoke.sh"]
     depends_on:
       web:

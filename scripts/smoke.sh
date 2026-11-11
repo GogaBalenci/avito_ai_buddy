@@ -1,8 +1,9 @@
 #!/bin/sh
 # Smoke check of the running stack (service smoke):
 #   docker compose --profile test run --rm smoke
-# C0 stub: web serves the SPA and proxies /healthz to api with both dependencies up.
-# At C3 it is replaced by `go test -tags smoke ./test/smoke` (main scenario via API).
+# 1) web serves the SPA and proxies /healthz to api with both dependencies up;
+# 2) the main scenario S1 + S3 through the API: go test -tags smoke ./test/smoke
+#    (it resets the demo data first).
 set -eu
 BASE_URL=${BASE_URL:-http://web}
 
@@ -18,5 +19,8 @@ echo "$body" | grep -q '"redis":true'
 
 echo "== headers"
 curl -fsSI "$BASE_URL/" | grep -qi '^content-security-policy:' && echo "ok: CSP present"
+
+echo "== main scenario S1 + S3 (API)"
+BASE_URL="$BASE_URL" go test -tags smoke -count=1 -v ./test/smoke
 
 echo "smoke: OK"
