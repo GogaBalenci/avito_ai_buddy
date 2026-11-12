@@ -299,7 +299,7 @@ func TestKnowledgeRuleOrder(t *testing.T) {
 		return result, nil
 	})
 	r = say(t, be, "как сборка проекта, мой телефон +7 912 345-67-89")
-	if strings.Contains(seen, "912") || !hasNotice(r, "pii_masked") {
+	if seen == "" || strings.Contains(seen, "912") || !hasNotice(r, "pii_masked") {
 		t.Fatalf("KA-11 %q %+v", seen, r)
 	}
 }
