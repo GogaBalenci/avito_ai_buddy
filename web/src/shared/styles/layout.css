@@ -27,3 +27,36 @@
   .home__chat { height: 70vh; }
   .header { flex-wrap: wrap; gap: var(--space-2); }
 }
+
+/* «Мой путь» */
+.panel-head { display: flex; justify-content: space-between; align-items: center; }
+.panel-head h2 { margin: 0; }
+.path { display: flex; flex-direction: column; gap: var(--space-3); }
+.path__period { font-size: 16px; }
+.path__stale { display: flex; gap: 4px; align-items: center; margin: 0; }
+.path__empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.progress { display: flex; flex-direction: column; gap: 4px; margin-top: var(--space-2); }
+.progress__label { display: flex; justify-content: space-between; font-size: 13px; color: var(--color-text-muted); }
+.progress__track { height: 8px; border-radius: 999px; background: var(--color-progress-track); overflow: hidden; }
+.progress--thin .progress__track { height: 4px; }
+.progress__bar { height: 100%; background: var(--color-progress); transition: width .3s; }
+.next { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; border-color: var(--color-text); }
+.next__label { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: .04em; }
+.next__title { margin: 0; font-weight: 700; font-size: 16px; }
+.periods { display: flex; flex-direction: column; gap: var(--space-1); }
+.period__head { width: 100%; display: flex; align-items: center; gap: var(--space-2); background: none; border: 0; padding: 8px 4px; font: inherit; cursor: pointer; text-align: left; border-radius: var(--radius-s); }
+.period__head:hover { background: var(--color-surface-muted); }
+.period__title { font-weight: 700; flex: 1; }
+.period--past .period__title { color: var(--color-text-muted); }
+.steps { list-style: none; margin: 0; padding: 0 0 0 var(--space-3); display: flex; flex-direction: column; gap: 2px; }
+.step__head { width: 100%; display: flex; align-items: center; gap: var(--space-2); background: none; border: 0; padding: 6px 4px; font: inherit; color: inherit; cursor: pointer; text-align: left; border-radius: var(--radius-s); }
+.step__head:hover { background: var(--color-surface-muted); }
+.step__ref { font-size: 12px; color: var(--color-text-subtle); min-width: 28px; }
+.step__title { flex: 1; }
+.step--done .step__title { color: var(--color-text-muted); }
+.step__body { padding: 0 4px var(--space-2) 44px; display: flex; flex-direction: column; gap: var(--space-2); }
+.interns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.intern { display: flex; flex-direction: column; gap: var(--space-2); }
+.intern__name { font-weight: 700; font-size: 16px; }
+.nav__link, .chip, .user, .brand__sub { white-space: nowrap; }
+@media (max-width: 1100px) { .brand__sub { display: none; } .user { display: none; } }
