@@ -3,10 +3,10 @@ package httpapi
 import (
 	"context"
 	"errors"
-	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/llm"
 	"net/http"
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/llm"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/auth"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/employees"
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
