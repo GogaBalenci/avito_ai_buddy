@@ -47,6 +47,10 @@ type Agent struct {
 	Clock   clock.Clock
 	// Catalog is the access catalog (S4): aliases, resources, roles.
 	Catalog *access.Catalog
+	// Tools reaches the knowledge service (search).
+	Tools mcpclient.Client
+	// RHigh, RLow are the search thresholds (09 §6.5).
+	RHigh, RLow float64
 	// Inbox counts pending requests of the mentor's interns (X-A28).
 	Inbox func(ctx context.Context, mentorID string) (int, error)
 	// Requests returns the user's requests, newest first (S3 + S4).
@@ -748,20 +752,6 @@ func (g *Agent) outOfScope(ctx context.Context, a actor.Actor, in Input, rec rec
 	default:
 		return g.help(in, a)
 	}
-	return r
-}
-
-// kbQuestion: until the knowledge endpoint (S2) is connected nothing is
-// found, so the reply follows rules 5–6 of 09 §6.5.
-func (g *Agent) kbQuestion(ctx context.Context, a actor.Actor, in Input, rec recognition) *api.AgentReply {
-	if rec.ContentTokens < 3 {
-		return g.unknown(ctx, a, in, nil)
-	}
-	r := reply.New(in.ClientMessageID, rules.KBQuestion)
-	r.MascotState = api.MascotStateAskMentor
-	r.Text = "В базе знаний ответа не нашёл, а придумывать не буду. Давай спросим наставника — вот черновик."
-	period, step := g.contextOf(ctx, a, nil)
-	g.escalate(ctx, a, r, "no_answer", rec.Query, period, step, nil)
 	return r
 }
 

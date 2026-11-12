@@ -10,6 +10,7 @@ import (
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/config"
+	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
 )
 
@@ -107,10 +108,13 @@ func TestToolErrorMapping(t *testing.T) {
 	}
 }
 
+// All 29 operations are implemented; the generated fallback still answers 501.
 func TestUnimplementedIs501(t *testing.T) {
-	h := newHarness(t)
-	be := h.login("u-intern-be")
-	expect(t, be.do("GET", "/api/kb/onboarding-week1", nil), http.StatusNotImplemented)
+	rec := httptest.NewRecorder()
+	api.Unimplemented{}.GetKbDoc(rec, httptest.NewRequest("GET", "/api/kb/x", nil), "x")
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatal(rec.Code)
+	}
 }
 
 func TestPanicRecovered(t *testing.T) {

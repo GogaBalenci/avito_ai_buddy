@@ -146,7 +146,10 @@ func build(t *testing.T, withMocks bool) *harness {
 	s.ChatWait = 300 * time.Millisecond
 	s.Agent = &router.Agent{Rules: rules.MustLoad(), Path: s.Path, Actions: s.Actions, Guard: g, Events: rec,
 		Docs: router.NewStaticDocs(docs), Redis: rc, Clock: clk, Requests: s.RequestsOf,
-		Catalog: catalog, Inbox: s.PendingInbox}
+		Catalog: catalog, Inbox: s.PendingInbox, Tools: tools, RHigh: cfg.KBRHigh, RLow: cfg.KBRLow}
+	if withMocks {
+		s.Agent.Docs = router.MCPDocs{Tools: tools}
+	}
 	h, err := Handler(s)
 	if err != nil {
 		t.Fatal(err)

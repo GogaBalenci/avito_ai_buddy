@@ -10,9 +10,9 @@
 - [x] 2.2 «Да» текстом не подтверждает; тесты §14.1-4, §14.1-5, §14.1-15, §14.1-16
 
 ## 3. База знаний, доступы, эскалация (к C4)
-- [ ] 3.1 Маршруты `kb_question` (порядок §6.5), `access_request`, `my_requests`, `ask_mentor`
-- [ ] 3.2 Эскалация: черновик вопроса, `copy_event`, `POST /api/client-events`
-- [ ] 3.3 Тесты T-15…T-20, T-22, T-27…T-29, T-31, T-32, T-34, T-39
+- [x] 3.1 Маршруты `kb_question` (порядок §6.5), `access_request`, `my_requests`, `ask_mentor`
+- [x] 3.2 Эскалация: черновик вопроса, `copy_event`, `POST /api/client-events`
+- [x] 3.3 Тесты T-15…T-20, T-22, T-27…T-29, T-31, T-32, T-34, T-39
 
 ## 4. LLM (13.11)
 - [ ] 4.1 `LLMClient` `openai_compatible`: `json_schema` или `json_object`, таймаут, circuit breaker, флаги `llm_enabled`/`llm_rephrase`
