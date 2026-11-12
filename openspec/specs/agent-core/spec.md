@@ -71,12 +71,17 @@
 - **THEN** промпт взят из internal/agent/prompts/intent.ru.tmpl, событие intent_recognized содержит prompt_version = intent-v1
 
 ### Requirement: AG-24 Неверная конфигурация LLM не мешает запуску
-Неполная конфигурация LLM (`openai_compatible` без `LLM_BASE_URL` или `LLM_MODEL`) и отклонённый ключ (HTTP 401/403) SHALL NOT мешать запуску и сценариям: сервер стартует, работает как `demo` и показывает понятную плашку с причиной.
+Неполная конфигурация LLM (`openai_compatible` без `LLM_BASE_URL` или `LLM_MODEL`), неизвестное значение `LLM_PROVIDER` и отклонённый ключ (HTTP 401/403) SHALL NOT мешать запуску и сценариям: сервер стартует, работает как `demo` и показывает понятную плашку с причиной.
 
 #### Scenario: Нет LLM_MODEL (§14.1-13)
 - **GIVEN** LLM_PROVIDER=openai_compatible без LLM_MODEL
 - **WHEN** docker compose up
 - **THEN** API проходит healthcheck, сценарии S1 + S3 проходятся, в UI плашка «LLM не настроена…»
+
+#### Scenario: Опечатка в LLM_PROVIDER
+- **GIVEN** LLM_PROVIDER=openai
+- **WHEN** docker compose up
+- **THEN** API проходит healthcheck и работает как demo, GET /api/llm/health отвечает status=misconfigured и last_error_code=invalid_LLM_PROVIDER
 
 #### Scenario: Ключ отклонён (§14.1-14)
 - **GIVEN** модель отвечает 401

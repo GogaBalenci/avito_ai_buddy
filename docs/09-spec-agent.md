@@ -1,8 +1,10 @@
 # Спецификация агента AI-buddy («Авиитик Витя»)
 
-Версия 1.4 · 12.11.2026 · статус: реализовано в бэкенде (промт 3.1, волны 5–8)
+Версия 1.5 · 12.11.2026 · статус: реализовано в бэкенде (промт 3.1, волны 5–8)
 Источники: `02-decisions.md` v3.4, `10-spec-s3-time-off.md` v1.1, `11-spec-s1-s2-s4.md` v1.0, `08-intern-journey.md`, `05-avito-sources.md` (политика терминов), `01-case-brief.md` (постановка п. 2, ограничения 2, 3, 5, 6, 9, 10).
 Эта спецификация описывает **общее поведение агента**. Детали сценариев (автоматы, контракты MCP, граничные случаи) — в `10` и `11`; окончательные OpenAPI и пути — в `12-architecture.md`; матрица прав — в `13-permissions.md`. Если имена расходятся, правы `12`/`13`.
+
+**Изменения v1.5 (README, 12.11):** AG-24 расширен: неизвестное значение `LLM_PROVIDER` (например, `openai`) не останавливает запуск — сервер работает как `demo`, `/api/llm/health` отвечает `misconfigured` с `last_error_code = invalid_LLM_PROVIDER` (§13.2, §14.1-13).
 
 **Изменения v1.4 (реализация, 12.11):** пути промптов и схемы — `internal/agent/llm/prompts/` (§3.2, §4, §7); пороги `R_HIGH`/`R_LOW` = 0.65/0.3 (§6.5); шаг 2 дополнительно не вызывается для ответов с эскалацией и `mascot_state=ask_mentor` (§7) — консервативнее спецификации; при отказе `json_schema` (400) адаптер один раз переходит на `json_object` и кладёт схему в system.
 
@@ -747,7 +749,7 @@ intents:
 ```json
 { "provider": "openai_compatible", "model": "yandexgpt/latest", "status": "ok | degraded | auth_error | misconfigured | circuit_open | disabled", "last_error_code": "timeout", "checked_at": "2026-11-10T12:00:00+03:00" }
 ```
-`disabled` — `LLM_PROVIDER=demo` или флаг `llm_enabled = false`. Эндпоинт делает пробный вызов не чаще раза в 30 с (кэш), ключ и заголовки не возвращает. Индикатор режима в шапке UI («Демо-режим» / «LLM» / «Упрощённый режим») берёт статус отсюда и из `AgentReply.mode`.
+`disabled` — `LLM_PROVIDER=demo` или флаг `llm_enabled = false`. `misconfigured` — `last_error_code` `missing_LLM_BASE_URL` / `missing_LLM_MODEL` (не задана переменная) или `invalid_LLM_PROVIDER` (значение не из `demo | openai_compatible`). Эндпоинт делает пробный вызов не чаще раза в 30 с (кэш), ключ и заголовки не возвращает. Индикатор режима в шапке UI («Демо-режим» / «LLM» / «Упрощённый режим») берёт статус отсюда и из `AgentReply.mode`.
 
 ### 13.3 Подключение сервисов (внедряемость)
 - Оркестратор зависит от интерфейса `ToolClient` (`Call(ctx, endpoint, tool, input) (output, error)`) и JSON Schema контрактов, а не от `mcp-mocks`. Адреса endpoint — переменные окружения (`MCP_CHECKLIST_URL`, `MCP_KNOWLEDGE_URL`, `MCP_ABSENCES_URL`, `MCP_ACCESS_URL`, `12` §4.4). Замена имитации на реальный MCP-сервер = смена адреса; код агента, промпты и тесты поведения не меняются.
@@ -771,7 +773,7 @@ intents:
 10. **Инварианты.** Given модель переформулировала с новой датой или словами «регламент Авито», When ответ проверен, Then отдан текст шаблона, событие `llm_rephrase_rejected`.
 11. **ПДн.** When сообщение содержит номер карты, Then в БД, логах и запросе к модели вместо номера `[скрыто]`, в ответе `notices` содержит `pii_masked`.
 12. **Неуверенность.** When два непонятных сообщения подряд, Then первое — уточнение с быстрыми ответами, второе — меню и черновик вопроса наставнику; третьего уточнения нет.
-13. **Неверная конфигурация LLM.** Given `LLM_PROVIDER=openai_compatible` без `LLM_MODEL`, When `docker compose up`, Then API проходит healthcheck, сценарии S1 + S3 проходятся, в UI плашка «LLM не настроена…».
+13. **Неверная конфигурация LLM.** Given `LLM_PROVIDER=openai_compatible` без `LLM_MODEL`, When `docker compose up`, Then API проходит healthcheck, сценарии S1 + S3 проходятся, в UI плашка «LLM не настроена…». То же при `LLM_PROVIDER=openai` (значение не из списка): `/api/llm/health` → `misconfigured`, `invalid_LLM_PROVIDER`.
 14. **Отклонённый ключ.** Given модель отвечает 401, When стажёр пишет «хочу отгул», Then форма открыта, `notices` содержит `llm_auth_error`, следующие 10 минут модель не вызывается.
 15. **Повтор сообщения.** Given ответ на `client_message_id = X` уже сформирован, When клиент повторно отправляет X, Then возвращается тот же `reply_id`, в истории одно сообщение, событий `reply_sent` — одно.
 16. **Текст не меняет статус.** When стажёр пишет «я изучил авито в цифрах, шаг 1.12», Then статус шага не меняется, в ответе карточка с «Отметить пройденным».
