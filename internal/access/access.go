@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"strconv"
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
@@ -39,6 +40,9 @@ type Catalog struct {
 
 // List returns the whole catalog for the actor, with `allowed`.
 func (c *Catalog) List(ctx context.Context, a actor.Actor) ([]Resource, error) {
+	if c == nil || c.Tools == nil {
+		return nil, errNoCatalog
+	}
 	var out struct {
 		Items []Resource `json:"items"`
 	}
@@ -47,6 +51,8 @@ func (c *Catalog) List(ctx context.Context, a actor.Actor) ([]Resource, error) {
 	}
 	return out.Items, nil
 }
+
+var errNoCatalog = errors.New("access catalog is not configured")
 
 // Get returns one resource; ok=false if it is not in the catalog.
 func (c *Catalog) Get(ctx context.Context, a actor.Actor, id string) (Resource, bool, error) {

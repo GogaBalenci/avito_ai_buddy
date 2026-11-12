@@ -111,8 +111,8 @@ func TestMainScenario(t *testing.T) {
 		s.t = t
 		var p api.PathView
 		s.must(http.StatusOK, "GET", "/api/path", nil, &p)
-		// cm-1.7 is seeded done until S4 (access requests) is connected, so the next step is be-1.11.
-		if p.CurrentPeriod != "week1" || p.NextStep == nil || p.NextStep.StepId != "be-1.11" || len(p.Waiting) != 1 || p.Waiting[0] != "cm-1.10" {
+		if p.CurrentPeriod != "week1" || p.NextStep == nil || p.NextStep.StepId != "cm-1.7" || len(p.Waiting) != 1 || p.Waiting[0] != "cm-1.10" ||
+			!p.HasPendingRequests {
 			t.Fatalf("path: period %s next %+v waiting %v", p.CurrentPeriod, p.NextStep, p.Waiting)
 		}
 		r := s.chat(uuid.NewString(), "payload", "step:be-1.12")
@@ -131,14 +131,14 @@ func TestMainScenario(t *testing.T) {
 		var res, again api.StepStatusResult
 		s.must(http.StatusOK, "POST", "/api/path/steps/be-1.12/status", body, &res)
 		s.must(http.StatusOK, "POST", "/api/path/steps/be-1.12/status", body, &again)
-		if !res.Changed || res.PathSummary.Progress.PeriodDone != 4 || again.Step.Status != "done" {
+		if !res.Changed || res.PathSummary.Progress.PeriodDone != 3 || again.Step.Status != "done" {
 			t.Fatalf("mark done: %+v / %+v", res, again)
 		}
 		s.must(http.StatusConflict, "POST", "/api/path/steps/cm-1.10/status",
 			map[string]any{"status": "done", "expected_status": "waiting", "idempotency_key": uuid.NewString()}, nil)
 
 		r = s.chat(uuid.NewString(), "text", "что мне делать дальше?")
-		if r.Intent != "my_path" || !strings.Contains(r.Text, "Дальше — «Изучи принципы разработки Авито»") {
+		if r.Intent != "my_path" || !strings.Contains(r.Text, "Дальше — «Попроси добавить тебя во все ключевые каналы и чаты»") {
 			t.Fatalf("my_path: %+v", r)
 		}
 	})
@@ -183,6 +183,48 @@ func TestMainScenario(t *testing.T) {
 		r = s.chat(uuid.NewString(), "text", "у меня температура, хочу отгул")
 		if action(r, api.OpenForm) != nil || r.Intent != "out_of_scope" {
 			t.Fatalf("sick leave must not open the form: %+v", r)
+		}
+	})
+
+	t.Run("S4 access", func(t *testing.T) {
+		s.t = t
+		r := s.chat(uuid.NewString(), "payload", "step:cm-1.7")
+		if r.PendingAction == nil || r.PendingAction.Kind != "access" {
+			t.Fatalf("draft: %+v", r)
+		}
+		confirm := "/api/actions/" + r.PendingAction.ActionId.String() + "/confirm"
+		var c1, c2 api.ConfirmResponse
+		s.must(http.StatusOK, "POST", confirm, nil, &c1)
+		s.must(http.StatusOK, "POST", confirm, nil, &c2)
+		if c1.Result.Status != "approved" || c2.Result.RequestId != c1.Result.RequestId {
+			t.Fatalf("confirm: %+v / %+v", c1.Result, c2.Result)
+		}
+		var st api.PathStep
+		s.must(http.StatusOK, "GET", "/api/path/steps/cm-1.7", nil, &st)
+		if st.Status != "done" {
+			t.Fatalf("cm-1.7 = %s", st.Status)
+		}
+		if r := s.chat(uuid.NewString(), "text", "дай доступ на запись в продовую базу данных"); r.PendingAction != nil {
+			t.Fatalf("prod-db-write must not get a draft: %+v", r)
+		}
+		m := newSession(t)
+		m.login("u-mentor")
+		var inbox api.RequestList
+		m.must(http.StatusOK, "GET", "/api/mentor/access-requests", nil, &inbox)
+		if inbox.Total != 1 || inbox.Items[0].RequestId != "ACC-000101" {
+			t.Fatalf("inbox: %+v", inbox)
+		}
+		key := uuid.NewString()
+		body := map[string]any{"decision": "approve", "idempotency_key": key}
+		var d1, d2 api.RequestView
+		m.must(http.StatusOK, "POST", "/api/mentor/access-requests/ACC-000101/decision", body, &d1)
+		m.must(http.StatusOK, "POST", "/api/mentor/access-requests/ACC-000101/decision", body, &d2)
+		if d1.Status != "approved" || d2.RequestId != d1.RequestId {
+			t.Fatalf("decision: %+v / %+v", d1, d2)
+		}
+		s.must(http.StatusOK, "GET", "/api/path/steps/cm-1.10", nil, &st)
+		if st.Status != "done" {
+			t.Fatalf("cm-1.10 = %s", st.Status)
 		}
 	})
 
