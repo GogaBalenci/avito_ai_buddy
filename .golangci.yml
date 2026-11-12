@@ -47,13 +47,14 @@ linters:
               desc: "mcp-mocks must not use the app schema (12 §2.1)"
         # The service role `system` can only originate from access sync (13 §2).
         sysactor-only-access-sync:
-          list-mode: strict
           files:
-            - "**/internal/auth/sysactor/**"
+            - "$all"
             - "!$test"
-          allow:
-            - $gostd
-            - "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
+            - "!**/internal/access/sync/**"
+            - "!**/internal/auth/sysactor/**"
+          deny:
+            - pkg: "github.com/GogaBalenci/avito_ai_buddy/internal/auth/sysactor"
+              desc: "only internal/access/sync may act as system (13 §2)"
   exclusions:
     generated: lax
     # v2 enables no exclusion presets by default: without std-error-handling
