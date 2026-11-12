@@ -118,3 +118,5 @@
 .md pre { background: var(--color-surface-muted); padding: var(--space-3); border-radius: var(--radius-s); overflow-x: auto; }
 .md table { border-collapse: collapse; } .md td, .md th { border: 1px solid var(--color-border); padding: 4px 8px; }
 .link-disabled { text-decoration: underline dotted; color: var(--color-text-muted); }
+.mode { display: inline-flex; align-items: center; gap: 4px; }
+.mode__warn { color: var(--color-warning-text); font-size: 16px; cursor: help; }

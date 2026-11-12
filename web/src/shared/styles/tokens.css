@@ -81,3 +81,35 @@
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color-scheme: light;
 }
+
+/* Тёмная тема (черта отсечения, п. 0): меняется только семантический слой, по системной настройке */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121212;
+    --color-surface: #1c1c1e;
+    --color-surface-muted: #2a2a2d;
+    --color-border: #333336;
+    --color-border-strong: #4a4a4e;
+    --color-text: #f2f2f2;
+    --color-text-muted: #b5b5b8;
+    --color-text-subtle: #8e8e93;
+    --color-text-error: #ff7b7e;
+    --color-border-error: #ff7b7e;
+    --color-link: #4cc3ff;
+    --color-primary-bg: #f2f2f2;
+    --color-primary-text: #000000;
+    --color-secondary-bg: #2a2a2d;
+    --color-secondary-text: #f2f2f2;
+    --color-info-bg: #0c3247; --color-info-text: #8fd8ff;
+    --color-success-bg: #1f3310; --color-success-text: #b7e36a;
+    --color-warning-bg: #3d2a10; --color-warning-text: #ffc27a;
+    --color-danger-bg: #401a1b; --color-danger-text: #ff9b9d;
+    --color-test-bg: #2d2145; --color-test-text: #cdb2ff;
+    --color-bubble-user: #f2f2f2;
+    --color-bubble-user-text: #000000;
+    --color-bubble-bot: #1c1c1e;
+    --color-progress-track: #333336;
+    --mascot-ink: #1a1a1a;
+    color-scheme: dark;
+  }
+}

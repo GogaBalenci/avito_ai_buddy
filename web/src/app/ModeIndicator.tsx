@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { configQuery, llmHealthQuery } from '@/shared/api/queries'
 import { Chip } from '@/shared/ui/Chip'
-import type { AppConfig, LlmHealth } from '@/shared/api/schemas'
+import type { AppConfig, LlmHealth, Notice } from '@/shared/api/schemas'
+import { useChat } from '@/features/chat/chatStore'
+import { NOTICE_TEXT } from '@/features/chat/replyLogic'
 
 export type Mode = { label: string; tone: 'neutral' | 'success' | 'warning'; title: string }
 
@@ -28,13 +30,30 @@ export function describeMode(config?: AppConfig, health?: LlmHealth): Mode {
   }
 }
 
+const LLM_NOTICES: Notice[] = ['llm_auth_error', 'llm_misconfigured', 'simplified_mode']
+
+/** Последняя плашка llm_* из ответов чата — остаётся значком у индикатора режима (09 §9.1). */
+export function lastLlmNotice(notices: Notice[][]): Notice | null {
+  for (let i = notices.length - 1; i >= 0; i--) {
+    const n = notices[i].find((x) => LLM_NOTICES.includes(x))
+    if (n) return n
+  }
+  return null
+}
+
 export function ModeIndicator() {
   const config = useQuery(configQuery)
   const health = useQuery({ ...llmHealthQuery, enabled: config.data?.llm_provider === 'openai_compatible' })
+  const notice = useChat((s) => lastLlmNotice(s.entries.map((e) => e.reply?.notices ?? [])))
   const mode = describeMode(config.data, health.data)
   return (
     <span className="mode" title={mode.title}>
       <Chip tone={mode.tone}>{mode.label}</Chip>
+      {notice && (
+        <span className="mode__warn" role="img" aria-label={NOTICE_TEXT[notice]} title={NOTICE_TEXT[notice]}>
+          ⚠
+        </span>
+      )}
       <span className="sr-only">{mode.title}</span>
     </span>
   )

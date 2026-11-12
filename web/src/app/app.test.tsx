@@ -167,3 +167,19 @@ describe('describeMode', () => {
     expect(describeMode(undefined, undefined).label).toBe('Режим demo')
   })
 })
+
+describe('LLM notice icon (wave 8)', () => {
+  it('stays next to the mode indicator after an llm_* notice', async () => {
+    const { lastLlmNotice } = await import('./ModeIndicator')
+    expect(lastLlmNotice([[], ['pii_masked']])).toBeNull()
+    expect(lastLlmNotice([['llm_auth_error'], ['simplified_mode', 'pii_masked']])).toBe('simplified_mode')
+    server.use(http.post('/api/chat/messages', async ({ request }) => {
+      const b = (await request.json()) as { client_message_id: string }
+      return HttpResponse.json(f.reply({ client_message_id: b.client_message_id, mode: 'fallback', notices: ['llm_auth_error'], text: 'Ответ по правилам' }))
+    }))
+    renderApp('/')
+    await userEvent.type(await screen.findByLabelText('Сообщение Вите'), 'привет{Enter}')
+    expect(await screen.findByRole('img', { name: /Ключ LLM не принят/ })).toBeInTheDocument()
+    expect(screen.getByText(/Ключ LLM не принят — работаю в упрощённом режиме/, { selector: '.plaque' })).toBeInTheDocument()
+  })
+})
