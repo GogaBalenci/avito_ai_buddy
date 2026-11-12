@@ -8,7 +8,7 @@ import { resetClientState } from '@/app/session'
 
 const FLAG_LABELS: Record<string, { title: string; values: Record<string, string> }> = {
   mock_absences_fault: { title: 'Сбой сервиса отсутствий', values: { off: 'нет сбоя', unavailable: 'недоступен', slow: 'отвечает медленно' } },
-  access_mentor_approval: { title: 'Одобрение доступа наставником', values: { on: 'включено', off: 'выключено (сразу одобряется)' } },
+  access_mentor_approval: { title: 'Одобрение доступа наставником', values: { on: 'включено', off: 'выключено (одобрится по таймеру)' } },
 }
 
 export function useDemoFlags(enabled: boolean) {
