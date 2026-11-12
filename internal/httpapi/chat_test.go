@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -75,7 +76,12 @@ func TestChatBehaviorTable(t *testing.T) {
 	h := newIntegration(t)
 	be := h.login("u-intern-be")
 
-	r := say(t, be, "Привет! Что умеешь?") // T-01
+	start := time.Now()
+	r := say(t, be, "что дальше?") // §14.1-1: demo, fast, mode=demo
+	if d := time.Since(start); d > 300*time.Millisecond || r.Mode != "demo" || r.Intent != "my_path" {
+		t.Fatalf("§14.1-1: %v %+v", d, r)
+	}
+	r = say(t, be, "Привет! Что умеешь?") // T-01
 	if r.Intent != "help" || r.MascotState != "hello" || !hasPayload(r, "intent:time_off") || r.Mode != "demo" {
 		t.Fatalf("T-01 %+v", r)
 	}
@@ -261,7 +267,11 @@ func TestChatStepButton(t *testing.T) {
 	if st := stepStatus(t, be, "be-1.12"); st != "in_progress" {
 		t.Fatalf("user_start: %s", st)
 	}
+	sent := len(h.events.Events("reply_sent"))
 	again := decode[api.AgentReply](t, sendRaw(be, id, map[string]any{"payload": "step:be-1.12"}))
+	if len(h.events.Events("reply_sent")) != sent { // §14.1-15: a repeat writes no events
+		t.Fatal("reply_sent on a repeated client_message_id")
+	}
 	if again.ReplyId != r.ReplyId || len(h.events.Events("step_started")) != 1 {
 		t.Fatalf("repeat: %v vs %v, step_started %d", again.ReplyId, r.ReplyId, len(h.events.Events("step_started")))
 	}
@@ -497,5 +507,38 @@ func TestChatServicesDown(t *testing.T) {
 	expect(t, sendRaw(be, newID(), map[string]any{"payload": "step:be-1.11"}), http.StatusNotFound)
 	if r = say(t, be, "мои заявки"); r.Intent != "my_requests" || !strings.Contains(r.Text, "ABS-000101") {
 		t.Fatalf("my_requests reads the local copies: %+v", r)
+	}
+}
+
+// Gaps of 10 §16 / 11 §1.16 closed by the wave 1–5 review: A-23, A-29, A-30, PA-14, PA-17.
+func TestChatSpecReview(t *testing.T) {
+	h := newIntegration(t)
+	be := h.login("u-intern-be")
+	id := newID()
+	r := decode[api.AgentReply](t, sendRaw(be, id, map[string]any{"text": "хочу отгул 2026-11-13"}))
+	again := decode[api.AgentReply](t, sendRaw(be, id, map[string]any{"text": "хочу отгул 2026-11-13"}))
+	if again.ReplyId != r.ReplyId || len(h.events.Events("time_off_form_opened")) != 1 { // A-29
+		t.Fatalf("A-29: %v %d", again.ReplyId, len(h.events.Events("time_off_form_opened")))
+	}
+	d := draft(t, be, "2026-11-13", "2026-11-13")
+	expect(t, be.do("POST", "/api/actions/"+d.PendingAction.ActionId.String()+"/confirm", nil), http.StatusOK)
+	if logs := h.logs.String(); strings.Contains(logs, "2026-11-13") || strings.Contains(logs, "хочу отгул") { // A-23
+		t.Fatalf("A-23: dates or message text in logs:\n%s", logs)
+	}
+	press(t, be, "intent:time_off") // A-30
+	ev := h.events.Events("intent_recognized")
+	if ev[len(ev)-1].Payload["source"] != "button" {
+		t.Fatalf("A-30: %+v", ev[len(ev)-1])
+	}
+	m := h.login("u-mentor") // PA-14
+	press(t, m, "intent:my_path")
+	pd := h.events.Events("permission_denied")
+	if len(pd) == 0 || pd[len(pd)-1].Payload["tool"] != "route:my_path" {
+		t.Fatalf("PA-14: %+v", pd)
+	}
+	expect(t, be.do("POST", "/api/demo/reset", nil), http.StatusNoContent) // PA-17
+	fresh := decode[api.AgentReply](t, sendRaw(be, id, map[string]any{"text": "хочу отгул"}))
+	if fresh.ReplyId == r.ReplyId {
+		t.Fatal("PA-17: after reset an old client_message_id is a new message")
 	}
 }

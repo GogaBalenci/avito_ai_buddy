@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"sync"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -46,6 +47,25 @@ type harness struct {
 	clock  *testkit.Clock
 	tools  *mcpclient.Fake
 	events *events.Recorder
+	logs   *syncBuffer
+}
+
+// syncBuffer collects logs written from several goroutines.
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
 
 func newHarness(t *testing.T) *harness { return build(t, false) }
@@ -88,7 +108,8 @@ func build(t *testing.T, withMocks bool) *harness {
 		cfg.MocksAdminURL = env.URL + "/internal"
 	}
 	g := &guard.Guard{Employees: emp}
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logs := &syncBuffer{}
+	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	s := &Server{Deps: Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: rc, Clock: clk,
 		Sessions:     &auth.Sessions{Redis: rc, Employees: emp, Clock: clk, TTL: time.Hour},
@@ -118,7 +139,7 @@ func build(t *testing.T, withMocks bool) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &harness{t: t, srv: s, h: h, clock: clk, tools: fake, events: rec}
+	return &harness{t: t, srv: s, h: h, clock: clk, tools: fake, events: rec, logs: logs}
 }
 
 // client is a browser session against the harness.
