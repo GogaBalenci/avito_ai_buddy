@@ -107,7 +107,17 @@ func TestLoadAPIBusinessSettings(t *testing.T) {
 	if c, _ = LoadAPI(env(m)); c.LLM.Misconfigured != "LLM_BASE_URL" {
 		t.Fatalf("no base url: %+v", c.LLM)
 	}
-	for k, v := range map[string]string{"LLM_PROVIDER": "gigachat", "MCP_TIMEOUT_MS": "x", "KB_R_HIGH": "2",
+	for _, v := range []string{"gigachat", "openai", "Ollama"} {
+		c, err := LoadAPI(env(map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r", "LLM_PROVIDER": v}))
+		if err != nil || c.LLM.Provider != "demo" || c.LLM.Requested != "openai_compatible" ||
+			c.LLM.Misconfigured != "LLM_PROVIDER" || c.LLM.MisconfiguredCode() != "invalid_LLM_PROVIDER" {
+			t.Errorf("LLM_PROVIDER=%s: %+v %v", v, c.LLM, err)
+		}
+	}
+	if (LLMConfig{Misconfigured: "LLM_MODEL"}).MisconfiguredCode() != "missing_LLM_MODEL" || (LLMConfig{}).MisconfiguredCode() != "" {
+		t.Error("MisconfiguredCode")
+	}
+	for k, v := range map[string]string{"MCP_TIMEOUT_MS": "x", "KB_R_HIGH": "2",
 		"SESSION_TTL_HOURS": "0", "PATH_POLL_INTERVAL_MS": "5", "LLM_TIMEOUT_SECONDS": "-1", "MCP_ACCESS_URL": "::bad", "KB_R_LOW": "x"} {
 		bad := map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r", k: v}
 		if _, err := LoadAPI(env(bad)); err == nil {

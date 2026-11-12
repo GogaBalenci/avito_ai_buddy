@@ -19,7 +19,9 @@ export function describeMode(config?: AppConfig, health?: LlmHealth): Mode {
     case 'auth_error':
       return { label: 'Упрощённый режим', tone: 'warning', title: 'Ключ LLM не принят — работаю по правилам. Проверь LLM_API_KEY' }
     case 'misconfigured':
-      return { label: 'Упрощённый режим', tone: 'warning', title: 'LLM не настроена (нет LLM_BASE_URL или LLM_MODEL) — работаю по правилам' }
+      return health?.last_error_code === 'invalid_LLM_PROVIDER'
+        ? { label: 'Упрощённый режим', tone: 'warning', title: 'LLM_PROVIDER: допустимы demo и openai_compatible — работаю по правилам' }
+        : { label: 'Упрощённый режим', tone: 'warning', title: 'LLM не настроена (нет LLM_BASE_URL или LLM_MODEL) — работаю по правилам' }
     case 'disabled':
       return { label: 'Упрощённый режим', tone: 'warning', title: 'LLM выключена флагом — работаю по правилам' }
     case 'circuit_open':

@@ -74,6 +74,9 @@ func TestConfigAndLLMHealth(t *testing.T) {
 	if contains(rec.Body.String(), "secret-key") {
 		t.Fatal("key leaked")
 	}
+	// unknown LLM_PROVIDER (e.g. "openai") → demo with invalid_LLM_PROVIDER, provider stays in the enum
+	h.srv.Cfg.LLM = config.LLMConfig{Requested: "openai_compatible", Provider: "demo", Misconfigured: "LLM_PROVIDER"}
+	expect(t, h.anon().do("GET", "/api/llm/health", nil), http.StatusOK, `"provider":"openai_compatible"`, `"status":"misconfigured"`, "invalid_LLM_PROVIDER")
 	h.srv.Cfg.LLM = config.LLMConfig{Requested: "openai_compatible", Provider: "openai_compatible", Model: "m"}
 	expect(t, h.anon().do("GET", "/api/llm/health", nil), http.StatusOK, `"model":"m"`)
 	expect(t, h.anon().do("GET", "/healthz", nil), http.StatusOK)

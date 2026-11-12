@@ -51,8 +51,20 @@ type LLMConfig struct {
 	Model        string
 	ExtraHeaders map[string]string
 	Timeout      time.Duration
-	// Misconfigured names the missing variable when openai_compatible could not start.
+	// Misconfigured names the variable that kept the model from starting:
+	// a missing LLM_BASE_URL / LLM_MODEL or an unknown LLM_PROVIDER value.
 	Misconfigured string
+}
+
+// MisconfiguredCode is the last_error_code of GET /api/llm/health for Misconfigured.
+func (l LLMConfig) MisconfiguredCode() string {
+	switch l.Misconfigured {
+	case "":
+		return ""
+	case "LLM_PROVIDER":
+		return "invalid_LLM_PROVIDER"
+	}
+	return "missing_" + l.Misconfigured
 }
 
 // ErrMissing is returned when a required variable is empty.
@@ -159,7 +171,9 @@ func loadLLM(getenv Getenv) (LLMConfig, error) {
 			l.Provider = "demo" // AG-24: start in demo with a notice
 		}
 	default:
-		return l, fmt.Errorf("LLM_PROVIDER: unknown provider %q (demo|openai_compatible)", l.Requested)
+		// AG-24: a typo in LLM_PROVIDER must not stop the stand — the operator
+		// asked for a model, so start in demo and report the variable.
+		l.Requested, l.Provider, l.Misconfigured = "openai_compatible", "demo", "LLM_PROVIDER"
 	}
 	return l, nil
 }

@@ -115,7 +115,7 @@ func (e *Engine) Status(ctx context.Context) (string, string) {
 	case !e.Requested() || !e.flag(ctx, "llm_enabled"):
 		return StatusDisabled, ""
 	case e.Misconfigured() != "":
-		return StatusMisconfigured, "missing_" + e.Misconfigured()
+		return StatusMisconfigured, e.Cfg.MisconfiguredCode()
 	}
 	if open, auth, last := e.Breaker.State(); auth {
 		return StatusAuthError, ReasonAuth

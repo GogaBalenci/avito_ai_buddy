@@ -271,6 +271,10 @@ func TestEngine(t *testing.T) {
 	if st, code := mis.Status(context.Background()); st != StatusMisconfigured || code != "missing_LLM_API_KEY" || mis.Misconfigured() != "LLM_API_KEY" {
 		t.Fatal(st, code)
 	}
+	typo := New(config.LLMConfig{Requested: ProviderOpenAI, Provider: "demo", Misconfigured: "LLM_PROVIDER"}, nil, clk)
+	if st, code := typo.Status(context.Background()); st != StatusMisconfigured || code != "invalid_LLM_PROVIDER" || typo.Enabled(context.Background()) {
+		t.Fatal("typo in LLM_PROVIDER", st, code)
+	}
 
 	var code atomic.Int32
 	code.Store(200)

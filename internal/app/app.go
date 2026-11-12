@@ -50,7 +50,7 @@ func Run(ctx context.Context, getenv config.Getenv, ready func(net.Addr)) error 
 	}
 	log := httpx.NewLogger(cfg.LogLevel, "api")
 	if cfg.LLM.Misconfigured != "" {
-		log.Warn("LLM is not configured, working in demo mode", "missing", cfg.LLM.Misconfigured)
+		log.Warn("LLM is not configured, working in demo mode", "variable", cfg.LLM.Misconfigured, "code", cfg.LLM.MisconfiguredCode())
 	}
 	a, err := New(ctx, cfg, log, clock.Real{Loc: cfg.Location})
 	if err != nil {

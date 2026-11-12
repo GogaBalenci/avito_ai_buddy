@@ -38,7 +38,7 @@ func (s *Server) GetLlmHealth(w http.ResponseWriter, r *http.Request) {
 	case eng != nil:
 		status, code = eng.Status(r.Context())
 	case s.Cfg.LLM.Misconfigured != "":
-		status, code = llm.StatusMisconfigured, "missing_"+s.Cfg.LLM.Misconfigured
+		status, code = llm.StatusMisconfigured, s.Cfg.LLM.MisconfiguredCode()
 	}
 	h.Status = api.LlmHealthStatus(status)
 	if code != "" {

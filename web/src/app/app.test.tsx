@@ -162,6 +162,11 @@ describe('describeMode', () => {
     expect(m.label).toBe(label)
     expect(m.title).toMatch(title)
   })
+  it('misconfigured by an unknown LLM_PROVIDER names the variable', () => {
+    const m = describeMode(cfg, { ...h('misconfigured'), last_error_code: 'invalid_LLM_PROVIDER' })
+    expect(m.label).toBe('Упрощённый режим')
+    expect(m.title).toMatch(/LLM_PROVIDER: допустимы demo и openai_compatible/)
+  })
   it('unknown health while loading', () => {
     expect(describeMode(cfg, undefined).title).toMatch(/Проверяю/)
     expect(describeMode(undefined, undefined).label).toBe('Режим demo')
