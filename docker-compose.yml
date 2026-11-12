@@ -170,7 +170,7 @@ services:
       args: *build-args
     environment:
       BASE_URL: http://web
-    # SPA и /healthz через web, затем основной сценарий S1 + S3 через API (сбрасывает демо-данные)
+    # SPA и /healthz через web, затем сценарии S1–S4 и наставник через API (сбрасывает демо-данные)
     command: ["sh", "scripts/smoke.sh"]
     depends_on:
       web:
