@@ -1,6 +1,6 @@
 # Документы проекта (SDD)
 
-Спецификации написаны до кода. Требования из `09`–`11` разложены в OpenSpec: `../openspec/changes/*/specs/*/spec.md`.
+Спецификации написаны до кода. Требования из `09`–`11` разложены в OpenSpec: действующие — `../openspec/specs/<capability>/spec.md`, история изменений (proposal, design, tasks, дельты) — `../openspec/changes/archive/`.
 
 ## Порядок чтения
 1. `12-architecture.md` — структура репозитория, компоненты, OpenAPI, контракты MCP, схема БД и Redis, тесты, CI.

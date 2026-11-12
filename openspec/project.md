@@ -9,7 +9,7 @@
 
 ## Где что лежит
 - Полные спецификации (источник правды): `docs/09-spec-agent.md`, `docs/10-spec-s3-time-off.md`, `docs/11-spec-s1-s2-s4.md`.
-- Изменения: `openspec/changes/add-*` — proposal, design, tasks и требования как `## ADDED Requirements`.
+- Изменения: `openspec/changes/add-*` — proposal, design, tasks и требования как `## ADDED Requirements`. Реализованные изменения заархивированы в `openspec/changes/archive/`, их требования — в `openspec/specs/<capability>/spec.md` (12.11).
 - После реализации `openspec archive <change>` переносит требования в `openspec/specs/<capability>/spec.md`.
 
 ## Соглашения
