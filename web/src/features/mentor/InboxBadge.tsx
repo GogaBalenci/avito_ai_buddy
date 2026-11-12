@@ -1,4 +1,13 @@
-/** Бейдж «Входящие · N» — появится с экраном «Входящие» (волна 6). */
+import { useMentorInbox } from './InboxPage'
+
+/** Бейдж «Входящие · N» в шапке наставника. */
 export function InboxBadge() {
-  return null
+  const q = useMentorInbox()
+  const n = q.data?.items.length ?? 0
+  if (!n) return null
+  return (
+    <span className="badge" aria-label={`${n} новых`}>
+      {n}
+    </span>
+  )
 }
