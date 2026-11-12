@@ -186,6 +186,21 @@ func TestMainScenario(t *testing.T) {
 		}
 	})
 
+	t.Run("S2 questions", func(t *testing.T) {
+		s.t = t
+		r := s.chat(uuid.NewString(), "text", "сколько ждать код-ревью?")
+		if r.Intent != "kb_question" || len(r.Sources) == 0 || r.Sources[0].Label != "test_instruction" {
+			t.Fatalf("answer: %+v", r)
+		}
+		var doc api.KbDoc
+		s.must(http.StatusOK, "GET", "/api/kb/"+r.Sources[0].Slug, nil, &doc)
+		if r := s.chat(uuid.NewString(), "text", "что в методичке наставника"); len(r.Sources) != 0 || r.Escalation == nil {
+			t.Fatalf("closed document: %+v", r)
+		}
+		s.must(http.StatusForbidden, "GET", "/api/kb/mentor-guide", nil, nil)
+		s.must(http.StatusNoContent, "POST", "/api/feedback", map[string]any{"reply_id": r.ReplyId.String(), "value": "up"}, nil)
+	})
+
 	t.Run("S4 access", func(t *testing.T) {
 		s.t = t
 		r := s.chat(uuid.NewString(), "payload", "step:cm-1.7")
