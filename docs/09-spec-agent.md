@@ -1,8 +1,10 @@
 # Спецификация агента AI-buddy («Авиитик Витя»)
 
-Версия 1.3 · 11.11.2026 · статус: патч `17` перенесён (промт 3.0)
+Версия 1.4 · 12.11.2026 · статус: реализовано в бэкенде (промт 3.1, волны 5–8)
 Источники: `02-decisions.md` v3.4, `10-spec-s3-time-off.md` v1.1, `11-spec-s1-s2-s4.md` v1.0, `08-intern-journey.md`, `05-avito-sources.md` (политика терминов), `01-case-brief.md` (постановка п. 2, ограничения 2, 3, 5, 6, 9, 10).
 Эта спецификация описывает **общее поведение агента**. Детали сценариев (автоматы, контракты MCP, граничные случаи) — в `10` и `11`; окончательные OpenAPI и пути — в `12-architecture.md`; матрица прав — в `13-permissions.md`. Если имена расходятся, правы `12`/`13`.
+
+**Изменения v1.4 (реализация, 12.11):** пути промптов и схемы — `internal/agent/llm/prompts/` (§3.2, §4, §7); пороги `R_HIGH`/`R_LOW` = 0.65/0.3 (§6.5); шаг 2 дополнительно не вызывается для ответов с эскалацией и `mascot_state=ask_mentor` (§7) — консервативнее спецификации; при отказе `json_schema` (400) адаптер один раз переходит на `json_object` и кладёт схему в system.
 
 **Изменения v1.3 (Q&A 10.11, архитектура 11.11 и перенос из `11` §5):** цепочка «наставник → руководитель → HR BP» в шаблонах вне прототипа; ответ с расхождением инструкций не переформулируется; правки §2.1, §5.1, §6.2, §8.1 из `11` §5 и `10` §19 (модель черновика с состояниями, `GET /api/actions/{action_id}`, `overlap_unchecked`); имена и пути по `12-architecture.md` (вход по тестовой учётке, `POST /api/client-events`, same-origin `Origin`, `MCP_*_URL`); OpenSpec — дельты в `openspec/changes/add-agent/` (§15).
 
@@ -115,7 +117,7 @@ sequenceDiagram
 6. **Переформулировка** (опционально) → проверка инвариантов → `AgentReply`.
 7. **События** (§12), запись диалога (замаскированный текст) в PostgreSQL.
 
-Пакеты Go (предложение для `12`): `internal/agent/{intent, rules, llm, router, reply, guard, pii}`, промпты — `internal/agent/prompts/*.ru.tmpl` через `go:embed`, словарь — `internal/agent/rules/intents.ru.yaml`. MCP вызывается через интерфейс `ToolClient` (§13.3).
+Пакеты Go (предложение для `12`): `internal/agent/{intent, rules, llm, router, reply, guard, pii}`, промпты — `internal/agent/llm/prompts/` через `go:embed`, словарь — `internal/agent/rules/intents.ru.yaml`. MCP вызывается через интерфейс `ToolClient` (§13.3).
 
 ### 2.1 Вход чата
 `POST /api/chat/messages` (окончательно — OpenAPI в `12`):
@@ -187,7 +189,7 @@ sequenceDiagram
 `help`, `kb_question`, `out_of_scope`, `unknown` наставнику доступны полностью (меню `help` для наставника — «Спросить о процессах», «Входящие», «Мои стажёры»).
 
 ### 3.2 Схема `IntentResult` (JSON Schema, контракт для модели и правил)
-Файл `docs/schemas/intent-result.v1.json`:
+Файл `internal/agent/llm/prompts/intent-result.v1.json` (встроен в бинарник, по нему проверяется ответ модели):
 
 ```json
 {
@@ -250,7 +252,7 @@ sequenceDiagram
 
 ## 4. Промпт распознавания намерения
 
-Файл `internal/agent/prompts/intent.ru.tmpl`, `prompt_version: intent-v1`. Параметры вызова: `temperature: 0`, `max_tokens: 200`, таймаут — §13.
+Файлы `internal/agent/llm/prompts/intent.system.txt` и `intent.user.tmpl`, `prompt_version: intent-v1`. Параметры вызова: `temperature: 0`, `max_tokens: 200`, таймаут — §13.
 
 ### 4.1 System
 ```text
@@ -453,7 +455,7 @@ intents:
 
 ## 7. Промпт переформулировки ответа
 
-Файл `internal/agent/prompts/rephrase.ru.tmpl`, `prompt_version: rephrase-v1`. Параметры: `temperature: 0.3`, `max_tokens: 300`. Вызывается, только если `llm_enabled` и `llm_rephrase` включены. **Не вызывается** (всегда шаблон — меньше риска и задержки): отказы по правам, `out_of_scope`, ошибки сервисов, «не нашёл», уточнения, карточки черновиков, ответ с расхождением инструкций (`11` §2.6.4, KQ-08).
+Файл `internal/agent/llm/prompts/rephrase.system.txt`, `prompt_version: rephrase-v1`. Параметры: `temperature: 0.3`, `max_tokens: 300`. Вызывается, только если `llm_enabled` и `llm_rephrase` включены. **Не вызывается** (всегда шаблон — меньше риска и задержки): отказы по правам, `out_of_scope`, ошибки сервисов, «не нашёл», уточнения, карточки черновиков, ответ с расхождением инструкций (`11` §2.6.4, KQ-08); в реализации также ответы с эскалацией или `mascot_state=ask_mentor`.
 
 ### 7.1 Вход модели — черновик, а не диалог
 ```json

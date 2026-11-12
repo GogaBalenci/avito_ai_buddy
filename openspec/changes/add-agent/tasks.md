@@ -15,10 +15,10 @@
 - [x] 3.3 Тесты T-15…T-20, T-22, T-27…T-29, T-31, T-32, T-34, T-39
 
 ## 4. LLM (13.11)
-- [ ] 4.1 `LLMClient` `openai_compatible`: `json_schema` или `json_object`, таймаут, circuit breaker, флаги `llm_enabled`/`llm_rephrase`
-- [ ] 4.2 Промпты `intent-v1`, `rephrase-v1` (`go:embed`), `prompt_version` в событиях
-- [ ] 4.3 `ReplyGuard` (7 правил), `GET /api/llm/health`; конфигурация без `LLM_MODEL` и 401 → demo с плашкой
-- [ ] 4.4 Тесты T-36…T-38, адаптер на фейковом HTTP-сервере, §14.1-2, -3, -10, -13, -14, -17
+- [x] 4.1 `LLMClient` `openai_compatible`: `json_schema` или `json_object`, таймаут, circuit breaker, флаги `llm_enabled`/`llm_rephrase`
+- [x] 4.2 Промпты `intent-v1`, `rephrase-v1` (`go:embed`), `prompt_version` в событиях
+- [x] 4.3 `ReplyGuard` (7 правил), `GET /api/llm/health`; конфигурация без `LLM_MODEL` и 401 → demo с плашкой
+- [x] 4.4 Тесты T-36…T-38, адаптер на фейковом HTTP-сервере, §14.1-2, -3, -10, -13, -14, -17
 
 ## 5. Фронт
 - [ ] 5.1 Чат: состояния, `thinking` на клиенте, отмена после 5 с, текст без HTML, маркеры `[n]`, плашки по `label`, индикатор режима
