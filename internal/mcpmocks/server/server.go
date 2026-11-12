@@ -27,6 +27,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/httpx"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/kb"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/absences"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/access"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/admin"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/catalog"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/checklist"
@@ -98,6 +99,7 @@ type Mocks struct {
 	Flags     *admin.Flags
 	Checklist *checklist.Service
 	Absences  *absences.Service
+	Access    *access.Service
 	cfg       config.Config
 }
 
@@ -126,6 +128,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	m := &Mocks{Pool: pool, Clock: clk, Content: c, Flags: &admin.Flags{Pool: pool}, cfg: cfg,
 		Checklist: &checklist.Service{Pool: pool, Clock: clk, Employees: people}}
 	m.Absences = &absences.Service{Pool: pool, Clock: clk, Employees: people, Flags: m.Flags}
+	m.Access = &access.Service{Pool: pool, Clock: clk, Employees: people, Flags: m.Flags, TimerMinutes: cfg.AccessTimerMinutes}
 	if err := m.init(ctx, false); err != nil {
 		pool.Close()
 		return nil, err
@@ -142,7 +145,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	endpoint("checklist", func(s *mcp.Server) { m.Checklist.Register(s, log) })
 	endpoint("knowledge", func(*mcp.Server) {})
 	endpoint("absences", func(s *mcp.Server) { m.Absences.Register(s, log) })
-	endpoint("access", func(*mcp.Server) {})
+	endpoint("access", func(s *mcp.Server) { m.Access.Register(s, log) })
 	if cfg.DemoToolsEnabled {
 		mux.Handle("/internal/demo/", admin.Handler(m.Flags, func(ctx context.Context) error { return m.init(ctx, true) }))
 	}
@@ -160,11 +163,17 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 		if err := checklist.LoadContent(ctx, tx, m.Content.Tracks); err != nil {
 			return fmt.Errorf("checklist content: %w", err)
 		}
+		if err := access.LoadContent(ctx, tx, m.Content.Resources); err != nil {
+			return fmt.Errorf("access content: %w", err)
+		}
 		if reset {
 			if _, err := tx.Exec(ctx, `TRUNCATE mock_checklist.progress, mock_checklist.idempotency`); err != nil {
 				return err
 			}
 			if err := absences.Truncate(ctx, tx); err != nil {
+				return err
+			}
+			if err := access.Truncate(ctx, tx); err != nil {
 				return err
 			}
 			if _, err := tx.Exec(ctx, `DELETE FROM mock_admin.meta WHERE key = 'seeded_at'`); err != nil {
@@ -188,14 +197,17 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 		if err := absences.Seed(ctx, tx, now); err != nil {
 			return err
 		}
+		if err := access.Seed(ctx, tx, now); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `INSERT INTO mock_admin.meta (key, value) VALUES ('seeded_at', $1)
 			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, now.Format(time.RFC3339))
 		return err
 	})
 }
 
-// TempTeamChannelsDone keeps cm-1.7 done until the access mock (S4) exists,
-// so the first screen has no button that does nothing (04: C3 fallback).
+// TempTeamChannelsDone keeps cm-1.7 done until the agent can request access
+// (wave 6 in progress), so the first screen has no button that does nothing.
 var TempTeamChannelsDone = true
 
 // SeedProgress returns the seeded statuses (11 §1.13).
