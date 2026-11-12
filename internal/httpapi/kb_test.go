@@ -12,14 +12,6 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
 )
 
-func sourceSlugs(r api.AgentReply) []string {
-	var out []string
-	for _, s := range r.Sources {
-		out = append(out, s.Slug)
-	}
-	return out
-}
-
 func hasNotice(r api.AgentReply, n string) bool {
 	for _, x := range r.Notices {
 		if string(x) == n {

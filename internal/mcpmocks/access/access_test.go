@@ -396,7 +396,8 @@ func TestListScopes(t *testing.T) {
 }
 
 func TestParamsHashStable(t *testing.T) {
-	if access.ParamsHash("team-channels") != access.ParamsHash("team-channels") || access.ParamsHash("a") == access.ParamsHash("b") ||
+	h1, h2 := access.ParamsHash("team-channels"), access.ParamsHash("team-channels")
+	if h1 != h2 || access.ParamsHash("a") == access.ParamsHash("b") ||
 		len(access.ParamsHash("x")) != 64 {
 		t.Fatal("params hash")
 	}
