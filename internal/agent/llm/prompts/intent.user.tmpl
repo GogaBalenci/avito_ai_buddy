@@ -1,0 +1,12 @@
+Контекст:
+- today: {{.Today}} ({{.Weekday}}), часовой пояс Europe/Moscow
+- role: {{.Role}}
+- track: {{.Track}}
+- period: {{.PeriodTitle}}
+- visible_steps: {{range .Steps}}{{.Ref}} «{{.Title}}»; {{end}}
+- access_resources: {{range .Resources}}{{.ID}} «{{.Title}}»; {{end}}
+- last_bot_question: {{.LastBotQuestion}}
+
+<message>
+{{.MaskedText}}
+</message>
