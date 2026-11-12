@@ -148,10 +148,18 @@ services:
     profiles: ["test"]
     image: ${REGISTRY_PREFIX:-docker.io/}library/node:24-alpine
     working_dir: /web
+    environment:
+      NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
+      TZ: ${TEST_TZ:-Europe/Moscow}
     volumes:
       - ./web:/web
-    # Заглушка до C3: тесты фронта (vitest --coverage → web/coverage) появятся вместе с экранами
-    command: ["node", "-e", "console.log('test-web: front-end tests are not implemented yet (C3)')"]
+      # общие тест-векторы S3 (10 §16.1) — те же, что у Go
+      - ./docs/specs:/docs/specs:ro
+      - ./api:/api:ro
+      # node_modules контейнера (alpine) не смешиваются с локальными
+      - /web/node_modules
+    # npm ci → eslint → tsc → vitest с покрытием (web/coverage, пороги 80 по 4 метрикам — 12 §11.2)
+    command: ["sh", "-c", "npm ci --registry=\"$$NPM_REGISTRY\" --no-audit --no-fund && npm run lint && npm run typecheck && npm run test:cov"]
 
   smoke:
     profiles: ["test"]

@@ -1,0 +1,83 @@
+/* Токены в два слоя (12 §10.2): палитра → семантика. Компоненты используют только семантику. */
+:root {
+  /* палитра */
+  --palette-black: #000000;
+  --palette-gray-900: #1a1a1a;
+  --palette-gray-700: #545454;
+  --palette-gray-500: #8a8a8a;
+  --palette-gray-300: #d6d6d6;
+  --palette-gray-200: #e8e8e8;
+  --palette-gray-100: #f2f1f0;
+  --palette-gray-50: #f9f8f7;
+  --palette-white: #ffffff;
+  --palette-blue-600: #0095e6;
+  --palette-blue-500: #00aaff;
+  --palette-blue-100: #e0f4ff;
+  --palette-green-600: #4f9e0f;
+  --palette-green-500: #97cf26;
+  --palette-green-100: #eef8db;
+  --palette-red-600: #e5363a;
+  --palette-red-100: #ffe8e8;
+  --palette-violet-500: #a169f7;
+  --palette-violet-100: #f1e9ff;
+  --palette-orange-500: #ff9a2e;
+  --palette-orange-100: #fff1df;
+  --palette-sand-400: #f2c48d;
+  --palette-sand-600: #c98b4f;
+  --palette-sand-100: #fbe7cf;
+  --palette-pink-300: #ffb3b3;
+
+  /* семантика — светлая тема (обязательна) */
+  --color-bg: var(--palette-gray-50);
+  --color-surface: var(--palette-white);
+  --color-surface-muted: var(--palette-gray-100);
+  --color-border: var(--palette-gray-200);
+  --color-border-strong: var(--palette-gray-300);
+  --color-text: var(--palette-gray-900);
+  --color-text-muted: var(--palette-gray-700);
+  --color-text-subtle: var(--palette-gray-500);
+  --color-text-error: var(--palette-red-600);
+  --color-border-error: var(--palette-red-600);
+  --color-link: var(--palette-blue-600);
+  --color-focus: var(--palette-blue-500);
+  --color-primary-bg: var(--palette-black);
+  --color-primary-text: var(--palette-white);
+  --color-secondary-bg: var(--palette-gray-100);
+  --color-secondary-text: var(--palette-gray-900);
+  --color-info-bg: var(--palette-blue-100);
+  --color-info-text: #005f8f;
+  --color-success-bg: var(--palette-green-100);
+  --color-success-text: var(--palette-green-600);
+  --color-warning-bg: var(--palette-orange-100);
+  --color-warning-text: #9a4d00;
+  --color-danger-bg: var(--palette-red-100);
+  --color-danger-text: var(--palette-red-600);
+  --color-test-bg: var(--palette-violet-100);
+  --color-test-text: #5b2fa8;
+  --color-bubble-user: var(--palette-gray-900);
+  --color-bubble-user-text: var(--palette-white);
+  --color-bubble-bot: var(--palette-white);
+  --color-progress: var(--palette-green-500);
+  --color-progress-track: var(--palette-gray-200);
+  --mascot-fur: var(--palette-sand-400);
+  --mascot-ear: var(--palette-sand-600);
+  --mascot-muzzle: var(--palette-sand-100);
+  --mascot-ink: var(--palette-gray-900);
+  --mascot-cheek: var(--palette-pink-300);
+  --mascot-accent: var(--palette-blue-500);
+  --mascot-ok: var(--palette-green-600);
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 12%);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: light;
+}

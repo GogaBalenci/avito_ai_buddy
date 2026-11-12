@@ -34,6 +34,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - name: Front-end lint, types, generated API types
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run lint
+          npm run typecheck
+          npm run gen
+          git diff --exit-code src/shared/api/schema.gen.ts
       - name: OpenSpec (specs before code)
         env:
           OPENSPEC_TELEMETRY: "0"
@@ -54,12 +62,15 @@ jobs:
             echo "### Coverage"
             echo "- Go app: $(tail -1 coverage/go-app.txt | awk '{print $NF}')"
             echo "- Go mocks (reference): $(tail -1 coverage/go-mocks.txt | awk '{print $NF}')"
+            node -e "const s=require('./web/coverage/coverage-summary.json').total;console.log('- Web: lines '+s.lines.pct+'%, statements '+s.statements.pct+'%, functions '+s.functions.pct+'%, branches '+s.branches.pct+'%')"
           } >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage
-          path: coverage/
+          path: |
+            coverage/
+            web/coverage/
           if-no-files-found: ignore
       - name: Stop
         if: always()
