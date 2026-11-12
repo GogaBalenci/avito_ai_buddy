@@ -1,0 +1,753 @@
+{
+  "uid": "ai-buddy",
+  "title": "AI-buddy: польза и надёжность",
+  "description": "События бадди из app.events (12 §13). Данные синтетические.",
+  "tags": [
+    "ai-buddy",
+    "hackathon"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "version": 3,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Ответов бадди",
+      "description": "События reply_sent за период",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"Ответов\" FROM app.events WHERE name='reply_sent' AND $__timeFilter(ts)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "id": 1,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Время ответа, p50",
+      "description": "Медиана latency_ms_total у reply_sent (AG-18: в demo < 300 мс)",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY (payload->>'latency_ms_total')::numeric) AS \"p50\" FROM app.events WHERE name='reply_sent' AND $__timeFilter(ts)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "id": 2,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Время ответа, p95",
+      "description": "95-й перцентиль latency_ms_total у reply_sent",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY (payload->>'latency_ms_total')::numeric) AS \"p95\" FROM app.events WHERE name='reply_sent' AND $__timeFilter(ts)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "id": 3,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Заявок создано",
+      "description": "action_completed: отгулы и доступы, созданные в тестовых сервисах после подтверждения",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"Заявок\" FROM app.events WHERE name='action_completed' AND $__timeFilter(ts)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "id": 4,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Воронка отгула (S3)",
+      "description": "Форма открыта → черновик проверен → заявка создана. Падение между шагами — где стажёр бросает оформление.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT step AS \"Шаг\", n AS \"Событий\" FROM (\n  SELECT 1 AS o, 'Форма открыта' AS step, count(*) AS n FROM app.events WHERE name='time_off_form_opened' AND $__timeFilter(ts)\n  UNION ALL SELECT 2, 'Черновик проверен', count(*) FROM app.events WHERE name='action_drafted' AND payload->>'kind'='time_off' AND $__timeFilter(ts)\n  UNION ALL SELECT 3, 'Ошибка в датах', count(*) FROM app.events WHERE name='time_off_validation_failed' AND $__timeFilter(ts)\n  UNION ALL SELECT 4, 'Заявка создана', count(*) FROM app.events WHERE name='action_completed' AND payload->>'kind'='time_off' AND $__timeFilter(ts)\n) t ORDER BY o"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "noValue": "Нет данных за период"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "manual",
+        "minVizHeight": 18,
+        "maxVizHeight": 26,
+        "minVizWidth": 8,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      },
+      "id": 5,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Эскалации к наставнику по причинам",
+      "description": "escalated: когда бадди честно передаёт вопрос наставнику вместо догадки (09 §8.2)",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE payload->>'reason'\n  WHEN 'explicit' THEN 'Попросили наставника' WHEN 'no_answer' THEN 'Нет ответа в базе'\n  WHEN 'no_source_term' THEN 'Термин без источника' WHEN 'permission_denied' THEN 'Отказ по правам'\n  WHEN 'not_understood' THEN 'Не понял дважды' WHEN 'negative_feedback' THEN 'Дважды «Не то»'\n  WHEN 'mentor_topic' THEN 'Тема для 1:1' ELSE coalesce(payload->>'reason','—') END AS \"Причина\",\n  count(*) AS \"Эскалаций\"\nFROM app.events WHERE name='escalated' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "noValue": "Нет данных за период"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "manual",
+        "minVizHeight": 18,
+        "maxVizHeight": 26,
+        "minVizWidth": 8,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      },
+      "id": 6,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Ответы по намерениям",
+      "description": "reply_sent по intent: с чем стажёры приходят к бадди",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE payload->>'intent'\n  WHEN 'help' THEN 'Что ты умеешь' WHEN 'my_path' THEN 'Мой путь' WHEN 'step_explain' THEN 'Объяснить шаг'\n  WHEN 'step_done' THEN 'Отметить шаг' WHEN 'kb_question' THEN 'Вопрос по базе знаний' WHEN 'time_off' THEN 'Отгул'\n  WHEN 'access_request' THEN 'Доступ' WHEN 'my_requests' THEN 'Мои заявки' WHEN 'ask_mentor' THEN 'Спросить наставника'\n  WHEN 'out_of_scope' THEN 'Вне прототипа' WHEN 'unknown' THEN 'Не понял' ELSE coalesce(payload->>'intent','—') END AS \"Намерение\", count(*) AS \"Ответов\"\nFROM app.events WHERE name='reply_sent' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "noValue": "Нет данных за период"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "manual",
+        "minVizHeight": 18,
+        "maxVizHeight": 26,
+        "minVizWidth": 8,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      },
+      "id": 7,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Оценки ответов",
+      "description": "feedback: «Помогло» и «Не то» по ответам из базы знаний; два «Не то» подряд — эскалация к наставнику",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) FILTER (WHERE payload->>'value'='up') AS \"Помогло\", count(*) FILTER (WHERE payload->>'value'='down') AS \"Не то\"\nFROM app.events WHERE name='feedback' AND $__timeFilter(ts)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Не то"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "vertical"
+      },
+      "id": 8,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "Отказы по правам",
+      "description": "permission_denied: попытки за пределами роли (13). Проверка в коде инструментов и в SQL поиска, а не в промпте.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT payload->>'tool' AS \"Инструмент\", coalesce(payload->>'role', role, '—') AS \"Роль\", count(*) AS \"Отказов\"\nFROM app.events WHERE name='permission_denied' AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 3 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Нет данных за период",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 9,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 9
+      }
+    },
+    {
+      "type": "table",
+      "title": "Заявки на доступ: кто решил и сколько ждали",
+      "description": "access_request_decided: сразу, по таймеру или наставником; среднее ожидание в минутах",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE payload->>'decided_by' WHEN 'auto' THEN 'Сразу (правило)' WHEN 'timer' THEN 'По таймеру' WHEN 'mentor' THEN 'Наставник' ELSE '—' END AS \"Кто решил\",\n  count(*) FILTER (WHERE payload->>'decision'='approve') AS \"Одобрено\",\n  count(*) FILTER (WHERE payload->>'decision'='reject') AS \"Отклонено\",\n  round(avg((payload->>'wait_ms')::numeric) / 60000, 1) AS \"Ожидание, мин\"\nFROM app.events WHERE name='access_request_decided' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Нет данных за период",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 10,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 7
+      }
+    },
+    {
+      "type": "table",
+      "title": "Неделя 1: прогресс стажёров",
+      "description": "app.path_period_stats: сколько шагов первой недели закрыто (метрика «неделя 1 вовремя»)",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT s.user_id AS \"Стажёр\", s.done AS \"Готово\", s.total AS \"Всего\",\n  round(100.0 * s.done / nullif(s.total, 0)) AS \"Готово, %\", s.updated_at AS \"Обновлено\"\nFROM app.path_period_stats s WHERE s.period = 'week1' ORDER BY 4 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Нет данных за период",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "id": 11,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 7
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Активность по часам",
+      "description": "Ответы, созданные заявки и эскалации во времени",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '1h'), CASE name WHEN 'reply_sent' THEN 'Ответы' WHEN 'action_completed' THEN 'Заявки' ELSE 'Эскалации' END AS metric, count(*) AS value\nFROM app.events WHERE name IN ('reply_sent','action_completed','escalated') AND $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            }
+          },
+          "noValue": "Нет данных за период"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "id": 12,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 16,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Откаты LLM по причинам",
+      "description": "llm_fallback: когда модель не ответила по схеме и бадди работал по правилам. В режиме demo модель не вызывается — панель пустая.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "buddy-pg"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(payload->>'reason','—') || CASE WHEN payload->>'step' = 'rephrase' THEN ' (переформулировка)' ELSE '' END AS \"Причина\", count(*) AS \"Откатов\"\nFROM app.events WHERE name='llm_fallback' AND $__timeFilter(ts) GROUP BY 1 ORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "noValue": "Нет данных за период"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "top",
+        "sizing": "manual",
+        "minVizHeight": 18,
+        "maxVizHeight": 26,
+        "minVizWidth": 8,
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      },
+      "id": 13,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "buddy-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 28,
+        "w": 8,
+        "h": 8
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Приложение",
+      "type": "link",
+      "url": "http://localhost:8380",
+      "targetBlank": true
+    }
+  ]
+}

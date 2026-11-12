@@ -1,0 +1,17 @@
+# Источник данных: тот же PostgreSQL, роль grafana_reader (только app.events и app.path_period_stats).
+apiVersion: 1
+datasources:
+  - name: buddy-events
+    uid: buddy-pg
+    type: grafana-postgresql-datasource
+    url: postgres:5432
+    user: grafana_reader
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ${POSTGRES_DB}
+      sslmode: disable
+      postgresVersion: 1800
+      timescaledb: false
+    secureJsonData:
+      password: ${GRAFANA_DB_PASSWORD}

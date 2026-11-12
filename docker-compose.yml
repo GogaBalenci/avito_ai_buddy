@@ -177,7 +177,53 @@ services:
         condition: service_healthy
 
   # ---------- profile: observability ----------
-  # Пока пусто. Grafana (${GRAFANA_PORT:-8381}) с дашбордом по app.events появится по 12 §13.
+  # docker compose --profile observability up -d --wait → Grafana на http://localhost:${GRAFANA_PORT:-8381}
+  # Дашборд «AI-buddy: польза и надёжность» по app.events (12 §13). Без профиля ничего не запускается.
+  grafana-init:
+    profiles: ["observability"]
+    image: ${REGISTRY_PREFIX:-docker.io/}library/postgres:18-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-buddy}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-buddy_local_only}
+      PGDATABASE: ${POSTGRES_DB:-buddy}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:-grafana_local_only}
+    volumes:
+      - ./deploy/grafana/reader.sql:/reader.sql:ro
+    # роль только на чтение двух таблиц; api должен быть здоров — миграции схемы app уже применены
+    command: ["sh", "-c", "psql -v ON_ERROR_STOP=1 -v pw=\"$$GRAFANA_DB_PASSWORD\" -v db=\"$$PGDATABASE\" -f /reader.sql"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    profiles: ["observability"]
+    image: ${REGISTRY_PREFIX:-docker.io/}grafana/grafana:${GRAFANA_VERSION:-12.4.12}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-buddy}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:-grafana_local_only}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_local_only}
+      # локальный стенд: дашборд открывается без входа, только просмотр
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/buddy.json
+      GF_USERS_DEFAULT_THEME: light
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      TZ: ${TZ:-Europe/Moscow}
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-8381}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health | grep -q '\"database\": *\"ok\"'"]
+      <<: *hc-timing
+    depends_on:
+      grafana-init:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
