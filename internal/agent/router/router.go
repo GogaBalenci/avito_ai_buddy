@@ -23,6 +23,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/llm"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/reply"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/rules"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/clock"
@@ -51,6 +52,8 @@ type Agent struct {
 	Tools mcpclient.Client
 	// RHigh, RLow are the search thresholds (09 §6.5).
 	RHigh, RLow float64
+	// LLM is the optional model (nil or not requested → demo).
+	LLM *llm.Engine
 	// Inbox counts pending requests of the mentor's interns (X-A28).
 	Inbox func(ctx context.Context, mentorID string) (int, error)
 	// Requests returns the user's requests, newest first (S3 + S4).
@@ -69,6 +72,7 @@ type Input struct {
 type Output struct {
 	Reply       *api.AgentReply
 	ButtonLabel string
+	rephrased   bool
 }
 
 // Error is an HTTP-level failure of a message (400/403/404/501).
@@ -110,8 +114,11 @@ var intentLabels = map[string]string{
 // recognition is what the pipeline knows about the message.
 type recognition struct {
 	rules.Result
-	Source string // rules | button
-	Query  string
+	Source   string // rules | button | llm
+	Override string // "llm": the rules won over the model (guard topic)
+	Query    string
+	DateFrom string // time_off prefill from the model (09 §3.3)
+	DateTo   string
 }
 
 // Handle processes one message.
@@ -132,11 +139,16 @@ func (g *Agent) Handle(ctx context.Context, a actor.Actor, in Input) (Output, er
 	if in.Masked {
 		reply.Notice(out.Reply, "pii_masked")
 	}
+	if in.Payload != "" && g.LLM.Misconfigured() != "" { // AG-24: the notice on every reply
+		out.Reply.Mode = api.AgentReplyModeFallback
+		reply.Notice(out.Reply, "llm_misconfigured")
+	}
 	if out.Reply.Intent != api.AgentReplyIntent(rules.Unknown) {
 		g.Redis.Del(ctx, unkKey(a.UserID)) // any recognized intent resets the counter (09 §6.4)
 	}
 	g.publish(ctx, "reply_sent", map[string]any{"intent": string(out.Reply.Intent),
-		"latency_ms_total": g.Clock.Now().Sub(start).Milliseconds(), "rephrased": false, "reply_id": out.Reply.ReplyId.String()})
+		"latency_ms_total": g.Clock.Now().Sub(start).Milliseconds(), "rephrased": out.rephrased,
+		"reply_id": out.Reply.ReplyId.String()})
 	return out, nil
 }
 
@@ -208,22 +220,23 @@ func (g *Agent) handleText(ctx context.Context, a actor.Actor, in Input) (Output
 	}
 	res := g.Rules.Recognize(in.Text, h)
 	rec := recognition{Result: res, Source: "rules", Query: in.Text}
+	st := g.modelIntent(ctx, a, in, h, loaded, &rec) // step 1 with a model; demo otherwise
 
 	// p. 7 of 09 §6.3: an answer to the previous clarification.
 	if opt := g.answerToQuestion(ctx, a.UserID, in.Text); opt != "" {
 		rec.Intent, rec.Confidence, rec.Ambiguous = opt, 0.9, nil
 	}
 	if len(rec.Ambiguous) > 1 {
-		return Output{Reply: g.clarify(ctx, a, in, rec.Ambiguous)}, nil
+		return Output{Reply: st.apply(g.clarify(ctx, a, in, rec.Ambiguous))}, nil
 	}
-	if rec.Intent == rules.Unknown || rec.Intent == rules.KBQuestion && in.Masked {
+	if rec.Intent == rules.Unknown || rec.Intent == rules.KBQuestion && in.Masked && rec.ContentTokens < 3 {
 		if in.Masked { // only personal data in the message: say so, nothing to escalate
 			r := reply.New(in.ClientMessageID, rules.Unknown)
 			r.Text = "Такие данные мне не нужны — я их скрыл и не сохраняю. Чем помочь?"
 			menu(r, a.Role)
-			return Output{Reply: r}, nil
+			return Output{Reply: st.apply(r)}, nil
 		}
-		return Output{Reply: g.unknown(ctx, a, in, loaded)}, nil
+		return Output{Reply: st.apply(g.unknown(ctx, a, in, loaded))}, nil
 	}
 	g.recognized(ctx, a, rec)
 	r, err := g.route(ctx, a, in, rec)
@@ -235,12 +248,26 @@ func (g *Agent) handleText(ctx context.Context, a actor.Actor, in Input) (Output
 			g.accessHint(ctx, a, r, rec.ResourceID) // 11 §3.5.4, p. 2; A-26
 		}
 	}
-	return Output{Reply: r}, err
+	if err == nil && r != nil {
+		g.rephrase(ctx, in, r, &st)
+		st.apply(r)
+	}
+	return Output{Reply: r, rephrased: st.rephrased}, err
 }
 
 func (g *Agent) recognized(ctx context.Context, a actor.Actor, rec recognition) {
-	g.publish(ctx, "intent_recognized", map[string]any{"intent": rec.Intent, "source": rec.Source,
-		"override": nil, "confidence": rec.Confidence, "latency_ms": 0})
+	var override any
+	if rec.Override != "" {
+		override = rec.Override
+	}
+	e := events.Event{Name: "intent_recognized", Mode: "demo", Payload: map[string]any{"intent": rec.Intent, "source": rec.Source,
+		"override": override, "confidence": rec.Confidence, "latency_ms": 0}}
+	if rec.Source == "llm" || rec.Override != "" {
+		e.Mode, e.PromptVersion = "llm", llm.IntentVersion
+	}
+	if g.Events != nil {
+		_ = g.Events.Publish(ctx, e)
+	}
 }
 
 // --- routing -----------------------------------------------------------------
@@ -580,6 +607,15 @@ func (g *Agent) timeOff(ctx context.Context, a actor.Actor, in Input, rec recogn
 	existing, _ := g.Actions.Upcoming(ctx, a)
 	form := api.ReplyActionFormTimeOff
 	act := api.ReplyAction{Type: api.OpenForm, Label: "Выбрать даты", Form: &form}
+	prefilled := false
+	if rec.DateFrom != "" { // from the model: only a prefill, the rules of S3 check after submit (09 §3.3)
+		f, err1 := clock.ParseISO(rec.DateFrom)
+		t, err2 := clock.ParseISO(rec.DateTo)
+		if err1 == nil && err2 == nil {
+			act.Prefill = &api.DateRange{DateFrom: api.IsoDate{Time: f}, DateTo: api.IsoDate{Time: t}}
+			prefilled = true
+		}
+	}
 	if len(existing) > 0 {
 		act.Existing = &existing
 	}
@@ -588,7 +624,7 @@ func (g *Agent) timeOff(ctx context.Context, a actor.Actor, in Input, rec recogn
 	if rec.Source == "button" {
 		entry = "help_menu"
 	}
-	g.publish(ctx, "time_off_form_opened", map[string]any{"entry": entry, "prefilled": false, "has_existing": len(existing) > 0})
+	g.publish(ctx, "time_off_form_opened", map[string]any{"entry": entry, "prefilled": prefilled, "has_existing": len(existing) > 0})
 	return r
 }
 

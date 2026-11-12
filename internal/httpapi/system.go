@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/llm"
 	"net/http"
 
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
@@ -28,17 +29,22 @@ func (s *Server) GetConfig(w http.ResponseWriter, _ *http.Request) {
 // GetLlmHealth reports the LLM mode without secrets (09 §13.2).
 func (s *Server) GetLlmHealth(w http.ResponseWriter, r *http.Request) {
 	h := api.LlmHealth{Provider: api.LlmHealthProvider(s.Cfg.LLM.Requested), CheckedAt: s.Clock.Now()}
-	switch {
-	case s.Cfg.LLM.Requested == "demo":
-		h.Status = api.LlmHealthStatusDisabled
-	case s.Cfg.LLM.Misconfigured != "":
-		h.Status = api.LlmHealthStatusMisconfigured
-		code := "missing_" + s.Cfg.LLM.Misconfigured
-		h.LastErrorCode = &code
-	default:
-		h.Status = api.LlmHealthStatusDegraded // the adapter reports real status (wave 8)
+	var eng *llm.Engine
+	if s.Agent != nil {
+		eng = s.Agent.LLM
 	}
-	if s.Cfg.LLM.Model != "" {
+	status, code := llm.StatusDisabled, ""
+	switch {
+	case eng != nil:
+		status, code = eng.Status(r.Context())
+	case s.Cfg.LLM.Misconfigured != "":
+		status, code = llm.StatusMisconfigured, "missing_"+s.Cfg.LLM.Misconfigured
+	}
+	h.Status = api.LlmHealthStatus(status)
+	if code != "" {
+		h.LastErrorCode = &code
+	}
+	if s.Cfg.LLM.Model != "" && s.Cfg.LLM.Requested != "demo" {
 		m := s.Cfg.LLM.Model
 		h.Model = &m
 	}

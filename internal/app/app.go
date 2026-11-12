@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/llm"
 	"io/fs"
 	"log/slog"
 	"net"
@@ -156,7 +157,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	}
 	srv.Agent = &router.Agent{Rules: rules.MustLoad(), Path: srv.Path, Actions: srv.Actions, Guard: g, Events: rec,
 		Docs: router.MCPDocs{Tools: tools}, Redis: a.Redis, Clock: clk, Requests: srv.RequestsOf,
-		Catalog: catalog, Inbox: srv.PendingInbox, Tools: tools, RHigh: cfg.KBRHigh, RLow: cfg.KBRLow}
+		Catalog: catalog, Inbox: srv.PendingInbox, Tools: tools, RHigh: cfg.KBRHigh, RLow: cfg.KBRLow,
+		LLM: llm.New(cfg.LLM, srv.Flags, clk)}
 	a.Handler, a.Server = h, srv
 	return a, nil
 }
