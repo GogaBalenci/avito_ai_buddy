@@ -316,8 +316,8 @@ ACCESS_TIMER_MINUTES=2
 PATH_POLL_INTERVAL_MS=10000
 
 # --- Поиск и сессии ---
-KB_R_HIGH=0.1                       # подбираются 13.11 (KM-13)
-KB_R_LOW=0.03
+KB_R_HIGH=0.65                      # подобраны на базе знаний (KM-13)
+KB_R_LOW=0.3
 SESSION_TTL_HOURS=12
 COOKIE_SECURE=false                 # true за HTTPS
 # необязательно: доп. origin через запятую; по умолчанию same-origin

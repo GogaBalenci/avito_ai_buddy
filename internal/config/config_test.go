@@ -80,7 +80,7 @@ func TestLoadAPIBusinessSettings(t *testing.T) {
 	if c.MCPURLs["absences"] != "http://mcp-mocks:8090/mcp/absences" || c.MCPTimeout.Milliseconds() != 3000 {
 		t.Fatalf("mcp defaults: %+v", c.MCPURLs)
 	}
-	if c.LLM.Provider != "demo" || !c.DemoToolsEnabled || c.KBRHigh != 0.1 || c.SessionTTL.Hours() != 12 || c.PollIntervalMS != 10000 {
+	if c.LLM.Provider != "demo" || !c.DemoToolsEnabled || c.KBRHigh != 0.65 || c.KBRLow != 0.3 || c.SessionTTL.Hours() != 12 || c.PollIntervalMS != 10000 {
 		t.Fatalf("defaults: %+v", c)
 	}
 	m := map[string]string{"DATABASE_URL": "postgres://x", "REDIS_URL": "redis://r",

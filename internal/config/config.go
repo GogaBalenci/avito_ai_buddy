@@ -94,10 +94,10 @@ func LoadAPI(getenv Getenv) (Config, error) {
 		return Config{}, err
 	}
 	c.SessionTTL = time.Duration(hours) * time.Hour
-	if c.KBRHigh, err = floatVar(getenv, "KB_R_HIGH", 0.1); err != nil {
+	if c.KBRHigh, err = floatVar(getenv, "KB_R_HIGH", 0.65); err != nil {
 		return Config{}, err
 	}
-	if c.KBRLow, err = floatVar(getenv, "KB_R_LOW", 0.03); err != nil {
+	if c.KBRLow, err = floatVar(getenv, "KB_R_LOW", 0.3); err != nil {
 		return Config{}, err
 	}
 	c.CookieSecure = boolVar(getenv, "COOKIE_SECURE", false)

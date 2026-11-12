@@ -31,6 +31,7 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/admin"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/catalog"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/checklist"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpmocks/knowledge"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/migrate"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/tracks"
 	"github.com/GogaBalenci/avito_ai_buddy/migrations"
@@ -100,6 +101,7 @@ type Mocks struct {
 	Checklist *checklist.Service
 	Absences  *absences.Service
 	Access    *access.Service
+	Knowledge *knowledge.Service
 	cfg       config.Config
 }
 
@@ -128,6 +130,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	m := &Mocks{Pool: pool, Clock: clk, Content: c, Flags: &admin.Flags{Pool: pool}, cfg: cfg,
 		Checklist: &checklist.Service{Pool: pool, Clock: clk, Employees: people}}
 	m.Absences = &absences.Service{Pool: pool, Clock: clk, Employees: people, Flags: m.Flags}
+	m.Knowledge = &knowledge.Service{Pool: pool}
 	m.Access = &access.Service{Pool: pool, Clock: clk, Employees: people, Flags: m.Flags, TimerMinutes: cfg.AccessTimerMinutes}
 	if err := m.init(ctx, false); err != nil {
 		pool.Close()
@@ -143,7 +146,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 			&mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
 	}
 	endpoint("checklist", func(s *mcp.Server) { m.Checklist.Register(s, log) })
-	endpoint("knowledge", func(*mcp.Server) {})
+	endpoint("knowledge", func(s *mcp.Server) { m.Knowledge.Register(s, log) })
 	endpoint("absences", func(s *mcp.Server) { m.Absences.Register(s, log) })
 	endpoint("access", func(s *mcp.Server) { m.Access.Register(s, log) })
 	if cfg.DemoToolsEnabled {
@@ -165,6 +168,9 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 		}
 		if err := access.LoadContent(ctx, tx, m.Content.Resources); err != nil {
 			return fmt.Errorf("access content: %w", err)
+		}
+		if err := knowledge.LoadContent(ctx, tx, m.Content.Docs, m.Clock.Now()); err != nil {
+			return fmt.Errorf("knowledge content: %w", err)
 		}
 		if reset {
 			if _, err := tx.Exec(ctx, `TRUNCATE mock_checklist.progress, mock_checklist.idempotency`); err != nil {
