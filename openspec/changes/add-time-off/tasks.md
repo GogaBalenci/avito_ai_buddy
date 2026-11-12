@@ -5,7 +5,7 @@
 - [x] 1.4 Черновики (общие с S4, `09` §8.1): модель §8.1, `POST /api/actions`, `GET /api/actions/{id}`, `confirm`, `cancel`; тесты A-07…A-11, A-16, A-20, A-36.
 - [x] 1.5 Оркестратор: маршрут `time_off`, приоритет защитных тем, копия в `time_off_requests`, события; тесты A-01…A-06, A-12…A-19, A-21…A-31.
 - [x] 1.6 `GET /api/time-off/config`; фильтры `kind`/`scope` в `GET /api/requests`; `upcoming_time_off` в `GET /api/mentor/interns` (если экран наставника не отсечён).
-- [ ] 1.7 Фронт: Zod-схема, `useTimeOffForm`, форма и карточки, блок «Мои заявки», экран `/requests`; тесты F-01…F-17.
+- [x] 1.7 Фронт: Zod-схема, `useTimeOffForm`, форма и карточки, блок «Мои заявки», экран `/requests`; тесты F-01…F-17.
 - [x] 1.8 Сиды `ABS-000101` (относительные даты) + сброс демо.
 - [x] 1.9 Smoke-шаги §16.5.
 - [x] 1.10 Документ `time-off-test-order` в базе знаний.

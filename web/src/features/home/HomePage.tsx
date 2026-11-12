@@ -1,7 +1,8 @@
 import { MyPathPanel } from '@/features/path/MyPathPanel'
 import { ChatPane } from '@/features/chat/ChatPane'
+import { MyRequestsBlock } from '@/features/requests/requests'
 
-/** Главный экран стажёра: чат + панель «Мой путь» (11 §1.6, шаг 1). */
+/** Главный экран стажёра: чат + панель «Мой путь» с блоком «Мои заявки» (11 §1.6, 10 §12.2). */
 export function HomePage() {
   return (
     <main className="home">
@@ -9,7 +10,9 @@ export function HomePage() {
         <ChatPane />
       </section>
       <aside className="home__path card" aria-label="Мой путь">
-        <MyPathPanel />
+        <MyPathPanel>
+          <MyRequestsBlock />
+        </MyPathPanel>
       </aside>
     </main>
   )
