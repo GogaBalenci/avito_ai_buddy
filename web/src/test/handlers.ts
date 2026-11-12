@@ -25,6 +25,7 @@ export const handlers = [
   http.post('/api/client-events', () => new HttpResponse(null, { status: 204 })),
   http.post('/api/feedback', () => new HttpResponse(null, { status: 204 })),
   http.get('/api/access/resources', () => HttpResponse.json({ items: f.resources })),
+  http.get('/api/kb/:slug', () => HttpResponse.json(f.kbDoc)),
 ]
 
 export const errorBody = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) =>
