@@ -22,6 +22,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/GogaBalenci/avito_ai_buddy/internal/access"
+	accesssync "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
@@ -69,8 +71,12 @@ type Deps struct {
 	Actions      *actions.Service
 	Seeder       *demo.Seeder
 	AdminHTTP    *http.Client // calls MCP_MOCKS_ADMIN_URL (demo only)
-	// Sync brings access requests of an intern up to date (S4, 11 §3.6); nil until S4.
+	// Sync brings access requests of an intern up to date (S4, 11 §3.6).
 	Sync func(ctx context.Context, userID string) error
+	// AccessSync applies decisions to steps and local copies (S4).
+	AccessSync *accesssync.Syncer
+	// Catalog is the access catalog as the access service gives it.
+	Catalog *access.Catalog
 	// Agent handles chat messages (09).
 	Agent *router.Agent
 	// ChatWait bounds waiting for a parallel repeat of a message (tests shorten it).

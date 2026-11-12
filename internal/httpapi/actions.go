@@ -22,13 +22,16 @@ func writeActionError(w http.ResponseWriter, r *http.Request, err error) {
 	if len(ae.Fields) > 0 {
 		extra["errors"] = ae.Fields
 	}
+	if ae.Existing != nil {
+		extra["existing"] = ae.Existing
+	}
 	writeError(w, r, ae.Status, ae.Code, ae.Message, extra)
 }
 
 // pendingAction converts a draft to PendingAction / ActionView.
 func actionView(st *actions.Store, d actions.Draft) api.ActionView {
 	v := api.ActionView{ActionId: mustUUID(d.ActionID), Kind: api.RequestKind(d.Kind),
-		State: api.ActionViewState(st.ViewState(d)), ExpiresAt: d.ExpiresAt, Summary: summaryJSON(d)}
+		State: api.ActionViewState(st.ViewState(d)), ExpiresAt: d.ExpiresAt, Summary: actions.Summary(d)}
 	if len(d.Result) > 0 {
 		var c actions.Confirmed
 		if decodeJSON(d.Result, &c) == nil {
@@ -58,8 +61,14 @@ func (s *Server) CreateAction(w http.ResponseWriter, r *http.Request) {
 	switch body.Kind {
 	case api.RequestKindTimeOff:
 		d, err = s.Actions.CreateTimeOff(r.Context(), a, str(body.Params.DateFrom), str(body.Params.DateTo))
+	case api.RequestKindAccess:
+		if body.Params.ResourceId == nil || body.Params.DateFrom != nil || body.Params.DateTo != nil {
+			writeError(w, r, http.StatusBadRequest, "BAD_REQUEST", "Для заявки на доступ нужен только resource_id", nil)
+			return
+		}
+		d, err = s.Actions.CreateAccess(r.Context(), a, *body.Params.ResourceId, actions.FromChat)
 	default:
-		writeError(w, r, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Заявки на доступ появятся позже", nil)
+		writeError(w, r, http.StatusBadRequest, "BAD_REQUEST", "Неизвестный вид заявки", nil)
 		return
 	}
 	if err != nil {
@@ -70,7 +79,7 @@ func (s *Server) CreateAction(w http.ResponseWriter, r *http.Request) {
 	for _, n := range d.Notices {
 		notices = append(notices, api.ActionCreatedNotices(n))
 	}
-	writeJSON(w, http.StatusCreated, api.ActionCreated{PendingAction: pendingJSON(s.Actions.Store, d), Notices: notices})
+	writeJSON(w, http.StatusCreated, api.ActionCreated{PendingAction: s.Actions.Store.Pending(d), Notices: notices})
 }
 
 // GetAction returns the state of a draft for history cards (A-36).

@@ -130,7 +130,7 @@ func Seed(ctx context.Context, tx pgx.Tx, now time.Time) error {
 	_, err := tx.Exec(ctx, `INSERT INTO mock_access.requests (request_id, employee_id, resource_id, status, policy, access_level,
 		justification, idempotency_key, params_hash, created_at)
 		VALUES ('ACC-000101', 'u-intern-be', 'space-cluster', 'pending', 'mentor', 'read',
-		'Шаг 1.10 чек-листа адаптации: Запроси доступ в пространство кластера', $1, $2, $3)`,
+		'Шаг 1.10 чек-листа адаптации: Запроси доступ в пространство своего кластера и команды и изучи его', $1, $2, $3)`,
 		SeedKey, ParamsHash("space-cluster"), now.Add(-24*time.Hour))
 	return err
 }

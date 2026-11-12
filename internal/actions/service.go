@@ -12,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
+	"github.com/GogaBalenci/avito_ai_buddy/internal/access"
+	accesssync "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/reply"
@@ -19,18 +21,22 @@ import (
 	"github.com/GogaBalenci/avito_ai_buddy/internal/events"
 	api "github.com/GogaBalenci/avito_ai_buddy/internal/gen/api"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/mcpclient"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/path"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/reqctx"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/timeoff/rules"
 )
 
 // Service creates and confirms drafts.
 type Service struct {
-	Store  *Store
-	Tools  mcpclient.Client
-	Guard  *guard.Guard
-	Pool   *pgxpool.Pool
-	Events events.Publisher
-	Clock  clock.Clock
+	Store   *Store
+	Tools   mcpclient.Client
+	Catalog *access.Catalog
+	Path    *path.Service
+	Sync    *accesssync.Syncer
+	Guard   *guard.Guard
+	Pool    *pgxpool.Pool
+	Events  events.Publisher
+	Clock   clock.Clock
 	// ConfirmWait is how long a parallel confirm waits for the first one (10 §8.1).
 	ConfirmWait time.Duration
 }
@@ -42,7 +48,9 @@ type Error struct {
 	Message   string
 	Retryable bool
 	Fields    []api.FieldError
-	Draft     *Draft // for 410: the dates to refill the form
+	Draft     *Draft           // for 410: the dates to refill the form
+	Existing  *api.RequestView // 409 DUPLICATE_ACTIVE: the active request
+	Resource  *access.Resource // the resource of an access error (texts)
 }
 
 func (e *Error) Error() string { return e.Code + ": " + e.Message }
@@ -233,6 +241,8 @@ func (s *Service) Confirm(ctx context.Context, a actor.Actor, id string) (Confir
 	switch d.Kind {
 	case "time_off":
 		res, err = s.confirmTimeOff(ctx, a, d)
+	case "access":
+		res, err = s.confirmAccess(ctx, a, d)
 	default:
 		err = fail(400, "BAD_REQUEST", "Неизвестный вид черновика")
 	}

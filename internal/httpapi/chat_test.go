@@ -87,12 +87,12 @@ func TestChatBehaviorTable(t *testing.T) {
 	}
 	for _, text := range []string{"что дальше?", "какой у меня прогресс", "отгул мне пока не нужен, а что дальше?"} { // T-02, T-03, T-30
 		r = say(t, be, text)
-		if r.Intent != "my_path" || !strings.Contains(r.Text, "«Неделя 1") || !strings.Contains(r.Text, "Дальше — «Изучи принципы разработки Авито»") ||
-			!hasPayload(r, "step:be-1.11") || hasAction(r, api.OpenForm) != nil {
+		if r.Intent != "my_path" || !strings.Contains(r.Text, "«Неделя 1") || !strings.Contains(r.Text, "Дальше — «Попроси добавить тебя во все ключевые каналы и чаты»") ||
+			!hasPayload(r, "step:cm-1.7") || hasAction(r, api.OpenForm) != nil {
 			t.Fatalf("%q: %+v", text, r)
 		}
 	}
-	if !strings.Contains(r.Text, "готово 3 из 12") || !strings.Contains(r.Text, "Ждём ответа") {
+	if !strings.Contains(r.Text, "готово 2 из 12") || !strings.Contains(r.Text, "Ждём ответа") {
 		t.Fatalf("my_path text: %s", r.Text)
 	}
 	for _, text := range []string{"хочу отгул", "можно взять отгулы на сессию?", "как отпроситься на день", "оформи отгула на пятницу"} { // T-04…T-07
@@ -284,12 +284,12 @@ func TestChatStepButton(t *testing.T) {
 	if len(h.events.Events("step_started")) != 1 {
 		t.Fatal("step_started on in_progress")
 	}
-	r = press(t, be, "step:cm-1.7") // done (temporary seed): P-A19
+	r = press(t, be, "step:cm-1.6") // done: P-A19
 	if !strings.Contains(r.Text, "уже отмечен") || hasAction(r, api.MarkDone) != nil {
 		t.Fatalf("done %+v", r)
 	}
 	r = press(t, be, "step:cm-1.10") // waiting: P-A20
-	if !strings.Contains(r.Text, "ждём ответа") || !hasPayload(r, "intent:my_path") || r.PendingAction != nil {
+	if !strings.Contains(r.Text, "ACC-000101 ждёт наставника") || !hasPayload(r, "intent:my_path") || r.PendingAction != nil {
 		t.Fatalf("waiting %+v", r)
 	}
 	r = press(t, be, "step:be-1.17") // track_only
@@ -304,7 +304,6 @@ func TestChatStepButton(t *testing.T) {
 	if r.MascotState != "ask_mentor" || r.Escalation == nil {
 		t.Fatalf("term %+v", r)
 	}
-	expect(t, sendRaw(be, newID(), map[string]any{"payload": "step:be-1.15"}), http.StatusNotImplemented) // S4 is not connected yet
 	// T-33: a mentor's step; P-A10: a foreign track; unknown id
 	for _, p := range []string{"step:cm-1.1", "step:fe-w1-10", "step:be-9.99"} {
 		expect(t, sendRaw(be, newID(), map[string]any{"payload": p}), http.StatusNotFound, "Такого шага в твоём пути нет")
@@ -323,7 +322,7 @@ func TestChatStepTextNotFound(t *testing.T) {
 	if !strings.Contains(r.Text, "закроется сам") || hasAction(r, api.MarkDone) != nil {
 		t.Fatalf("access step done %+v", r)
 	}
-	r = say(t, be, "я прошел шаг 1.7")
+	r = say(t, be, "я прошел шаг 1.6")
 	if !strings.Contains(r.Text, "уже отмечен") {
 		t.Fatalf("done step %+v", r)
 	}
@@ -394,9 +393,7 @@ func TestChatInputValidation(t *testing.T) {
 	if n := len(h.events.Events("intent_recognized")); n != 0 {
 		t.Fatalf("recognition must not run: %d", n)
 	}
-	expect(t, sendRaw(be, newID(), map[string]any{"payload": "resource:channel-tech-dep"}), http.StatusNotImplemented)
 	expect(t, h.anon().do("POST", "/api/chat/messages", map[string]any{"client_message_id": newID(), "text": "a"}), http.StatusUnauthorized)
-	expect(t, sendRaw(be, newID(), map[string]any{"text": "добавь меня в tech-dep"}), http.StatusNotImplemented)
 }
 
 // 10 A18: "да" does not confirm a draft.

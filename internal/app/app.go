@@ -18,6 +18,8 @@ import (
 
 	"github.com/GogaBalenci/avito_ai_buddy/content"
 	"github.com/GogaBalenci/avito_ai_buddy/contracts"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/access"
+	accesssync "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
@@ -109,7 +111,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		return nil, err
 	}
 	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people, Getenv: cfg.Getenv,
-		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff}}
+		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff, demo.SeedAccess}}
 	if seeded, err := seeder.SeedIfEmpty(ctx); err != nil {
 		a.Close()
 		return nil, fmt.Errorf("seeds: %w", err)
@@ -124,6 +126,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 	tools := &mcpclient.MCP{URLs: cfg.MCPURLs, Timeout: cfg.MCPTimeout, Log: log}
 	g := &guard.Guard{Employees: emp}
 	rec := &events.PG{Pool: pool, Clock: clk}
+	catalog := &access.Catalog{Tools: tools}
+	syncer := &accesssync.Syncer{Tools: tools, Pool: pool, Events: rec, Clock: clk}
+	paths := &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool}
 	srv := &httpapi.Server{Deps: httpapi.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: a.Redis, Clock: clk,
 		Sessions:     &auth.Sessions{Redis: a.Redis, Employees: emp, Clock: clk, TTL: cfg.SessionTTL, Secure: cfg.CookieSecure},
@@ -135,12 +140,15 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		Flags:        &flags.PG{Pool: pool},
 		Tools:        tools,
 		Guard:        g,
-		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
+		Path:         paths,
 		Actions: &actions.Service{Store: &actions.Store{Redis: a.Redis, Clock: clk}, Tools: tools, Guard: g, Pool: pool,
-			Events: rec, Clock: clk},
-		Seeder:    seeder,
-		AdminHTTP: &http.Client{Timeout: 10 * time.Second},
-		Health:    health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
+			Events: rec, Clock: clk, Catalog: catalog, Path: paths, Sync: syncer},
+		Sync:       syncer.Run,
+		AccessSync: syncer,
+		Catalog:    catalog,
+		Seeder:     seeder,
+		AdminHTTP:  &http.Client{Timeout: 10 * time.Second},
+		Health:     health.Handler(map[string]health.Probe{"postgres": pgProbe, "redis": rdProbe}, log),
 	}}
 	h, err := httpapi.Handler(srv)
 	if err != nil {
@@ -154,7 +162,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, clk clock.Clo
 		return nil, err
 	}
 	srv.Agent = &router.Agent{Rules: rules.MustLoad(), Path: srv.Path, Actions: srv.Actions, Guard: g, Events: rec,
-		Docs: router.NewStaticDocs(docs), Redis: a.Redis, Clock: clk, Requests: srv.RequestsOf}
+		Docs: router.NewStaticDocs(docs), Redis: a.Redis, Clock: clk, Requests: srv.RequestsOf,
+		Catalog: catalog, Inbox: srv.PendingInbox}
 	a.Handler, a.Server = h, srv
 	return a, nil
 }

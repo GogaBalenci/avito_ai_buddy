@@ -110,7 +110,7 @@ func TestToolErrorMapping(t *testing.T) {
 func TestUnimplementedIs501(t *testing.T) {
 	h := newHarness(t)
 	be := h.login("u-intern-be")
-	expect(t, be.do("GET", "/api/mentor/access-requests", nil), http.StatusNotImplemented)
+	expect(t, be.do("GET", "/api/kb/onboarding-week1", nil), http.StatusNotImplemented)
 }
 
 func TestPanicRecovered(t *testing.T) {

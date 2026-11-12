@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/GogaBalenci/avito_ai_buddy/internal/access"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actor"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
@@ -44,8 +45,10 @@ type Agent struct {
 	Docs    DocSource
 	Redis   *redis.Client
 	Clock   clock.Clock
-	// Aliases of the access catalog (11 §3.5.1); nil until S4.
-	Aliases func(ctx context.Context, a actor.Actor) []rules.Alias
+	// Catalog is the access catalog (S4): aliases, resources, roles.
+	Catalog *access.Catalog
+	// Inbox counts pending requests of the mentor's interns (X-A28).
+	Inbox func(ctx context.Context, mentorID string) (int, error)
 	// Requests returns the user's requests, newest first (S3 + S4).
 	Requests func(ctx context.Context, userID string) ([]api.RequestView, error)
 }
@@ -80,6 +83,8 @@ func badPayload() *Error {
 func noStep() *Error {
 	return &Error{http.StatusNotFound, "NOT_FOUND", "Такого шага в твоём пути нет"}
 }
+
+var reResource = regexp.MustCompile(`^[a-z][a-z0-9-]{1,40}$`)
 
 var reStepID = regexp.MustCompile(`^[a-z]{2}-[a-z0-9]+(?:[.-][a-z0-9]+)*$`)
 
@@ -162,7 +167,10 @@ func (g *Agent) handlePayload(ctx context.Context, a actor.Actor, in Input) (Out
 		}
 		return g.stepButton(ctx, a, in, value)
 	case "resource":
-		return Output{}, &Error{http.StatusNotImplemented, "NOT_IMPLEMENTED", "Заявки на доступ появятся в следующей версии"}
+		if !reResource.MatchString(value) {
+			return Output{}, badPayload()
+		}
+		return g.resourcePayload(ctx, a, in, value)
 	}
 	return Output{}, badPayload()
 }
@@ -184,9 +192,7 @@ func (g *Agent) handleText(ctx context.Context, a actor.Actor, in Input) (Output
 		return Output{Reply: r}, nil
 	}
 	h := rules.Hints{}
-	if g.Aliases != nil {
-		h.Aliases = g.Aliases(ctx, a)
-	}
+	h.Aliases = g.catalogAliases(ctx, a)
 	var loaded *path.Loaded
 	if a.Role == actor.Intern {
 		if l, err := g.Path.Load(ctx, a, ""); err == nil {
@@ -217,6 +223,14 @@ func (g *Agent) handleText(ctx context.Context, a actor.Actor, in Input) (Output
 	}
 	g.recognized(ctx, a, rec)
 	r, err := g.route(ctx, a, in, rec)
+	if err == nil && r != nil && a.Role == actor.Intern {
+		switch {
+		case rec.Second == rules.AccessRequest && rec.ResourceID == "":
+			reply.Quick(r, intentLabels[rules.AccessRequest], "intent:access_request")
+		case rec.Intent != rules.AccessRequest && rec.ResourceID != "":
+			g.accessHint(ctx, a, r, rec.ResourceID) // 11 §3.5.4, p. 2; A-26
+		}
+	}
 	return Output{Reply: r}, err
 }
 
@@ -247,7 +261,7 @@ func (g *Agent) route(ctx context.Context, a actor.Actor, in Input, rec recognit
 	case rules.OutOfScope:
 		return g.outOfScope(ctx, a, in, rec), nil
 	case rules.AccessRequest:
-		return nil, &Error{http.StatusNotImplemented, "NOT_IMPLEMENTED", "Заявки на доступ появятся в следующей версии"}
+		return g.accessRequest(ctx, a, in, rec), nil
 	case rules.KBQuestion:
 		return g.kbQuestion(ctx, a, in, rec), nil
 	}
@@ -406,10 +420,11 @@ func (g *Agent) stepButton(ctx context.Context, a actor.Actor, in Input, stepID 
 		return Output{}, noStep()
 	}
 	label := stepButton(s) + ": " + s.Title
-	if s.HelpKind == "access_request" && s.Status != "done" && s.Status != "waiting" {
-		return Output{}, &Error{http.StatusNotImplemented, "NOT_IMPLEMENTED", "Заявки на доступ появятся в следующей версии"}
+	intent := rules.StepExplain
+	if s.HelpKind == "access_request" {
+		intent = rules.AccessRequest
 	}
-	g.recognized(ctx, a, recognition{Result: rules.Result{Intent: rules.StepExplain, Confidence: 1}, Source: "button"})
+	g.recognized(ctx, a, recognition{Result: rules.Result{Intent: intent, Confidence: 1}, Source: "button"})
 	switch s.Status {
 	case "done":
 		return Output{Reply: alreadyDone(in, s), ButtonLabel: label}, nil
@@ -424,6 +439,9 @@ func (g *Agent) stepButton(ctx context.Context, a actor.Actor, in Input, stepID 
 				g.publish(ctx, "step_started", map[string]any{"step_id": s.ID, "period": s.Period})
 			}
 		}
+	}
+	if s.HelpKind == "access_request" {
+		return Output{Reply: g.accessStep(ctx, a, in, s), ButtonLabel: label}, nil
 	}
 	return Output{Reply: g.explainStep(ctx, a, in, s, true), ButtonLabel: label}, nil
 }
@@ -579,6 +597,11 @@ func (g *Agent) myRequests(ctx context.Context, a actor.Actor, in Input) *api.Ag
 	r := reply.New(in.ClientMessageID, rules.MyRequests)
 	if a.Role == actor.Mentor {
 		r.Text = "Входящие заявки стажёров — на экране «Входящие»."
+		if g.Inbox != nil {
+			if n, err := g.Inbox(ctx, a.UserID); err == nil {
+				r.Text = "Входящих заявок: " + strconv.Itoa(n) + "."
+			}
+		}
 		reply.Link(r, "Входящие", "/mentor/inbox")
 		return r
 	}

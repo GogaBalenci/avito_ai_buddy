@@ -206,10 +206,6 @@ func (m *Mocks) init(ctx context.Context, reset bool) error {
 	})
 }
 
-// TempTeamChannelsDone keeps cm-1.7 done until the agent can request access
-// (wave 6 in progress), so the first screen has no button that does nothing.
-var TempTeamChannelsDone = true
-
 // SeedProgress returns the seeded statuses (11 §1.13).
 func SeedProgress(c *Content) []checklist.SeedProgress {
 	rows := []checklist.SeedProgress{
@@ -217,9 +213,6 @@ func SeedProgress(c *Content) []checklist.SeedProgress {
 		{EmployeeID: "u-intern-be", StepID: "cm-1.9", Status: "done"},
 		{EmployeeID: "u-intern-be", StepID: "cm-1.10", Status: "waiting", RequestRef: "ACC-000101"},
 		{EmployeeID: "u-intern-be", StepID: "be-1.11", Status: "in_progress"},
-	}
-	if TempTeamChannelsDone {
-		rows = append(rows, checklist.SeedProgress{EmployeeID: "u-intern-be", StepID: "cm-1.7", Status: "done"})
 	}
 	if fe, err := c.Tracks.Path("frontend"); err == nil {
 		for _, s := range fe {

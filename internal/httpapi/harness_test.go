@@ -18,6 +18,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/GogaBalenci/avito_ai_buddy/content"
+	"github.com/GogaBalenci/avito_ai_buddy/internal/access"
+	accesssync "github.com/GogaBalenci/avito_ai_buddy/internal/access/sync"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/actions"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/guard"
 	"github.com/GogaBalenci/avito_ai_buddy/internal/agent/router"
@@ -94,7 +96,7 @@ func build(t *testing.T, withMocks bool) *harness {
 		employees.Employee{UserID: "u-mentor-other", DisplayName: "Другой наставник", Role: "mentor"},
 		employees.Employee{UserID: "u-intern-other", DisplayName: "Чужой стажёр", Role: "intern", Track: "backend", MentorID: "u-mentor-other", StartDaysAgoDefault: 5})
 	seeder := &demo.Seeder{Pool: pool, Clock: clk, Employees: people,
-		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff}}
+		Extra: []func(context.Context, pgx.Tx, time.Time) error{demo.SeedTimeOff, demo.SeedAccess}}
 	if _, err := seeder.SeedIfEmpty(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +110,9 @@ func build(t *testing.T, withMocks bool) *harness {
 		cfg.MocksAdminURL = env.URL + "/internal"
 	}
 	g := &guard.Guard{Employees: emp}
+	catalog := &access.Catalog{Tools: tools}
+	syncer := &accesssync.Syncer{Tools: tools, Pool: pool, Events: rec, Clock: clk}
+	paths := &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool}
 	logs := &syncBuffer{}
 	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	s := &Server{Deps: Deps{
@@ -121,12 +126,18 @@ func build(t *testing.T, withMocks bool) *harness {
 		Flags:        flags.Static{"llm_enabled": "on", "llm_rephrase": "on"},
 		Tools:        tools,
 		Guard:        g,
-		Path:         &path.Service{Tools: tools, Employees: emp, Clock: clk, Guard: g, Pool: pool},
+		Path:         paths,
+		Catalog:      catalog,
+		AccessSync:   syncer,
 		Actions: &actions.Service{Store: &actions.Store{Redis: rc, Clock: clk}, Tools: tools, Guard: g, Pool: pool,
+			Catalog: catalog, Path: paths, Sync: syncer,
 			Events: rec, Clock: clk, ConfirmWait: 300 * time.Millisecond},
 		Seeder: seeder,
 		Health: health.Handler(map[string]health.Probe{"postgres": health.ProbeFunc(func(context.Context) error { return nil })}, log),
 	}}
+	if withMocks {
+		s.Sync = syncer.Run
+	}
 	kbDir, _ := fs.Sub(content.FS(), "kb")
 	docs, err := kb.Load(kbDir)
 	if err != nil {
@@ -134,7 +145,8 @@ func build(t *testing.T, withMocks bool) *harness {
 	}
 	s.ChatWait = 300 * time.Millisecond
 	s.Agent = &router.Agent{Rules: rules.MustLoad(), Path: s.Path, Actions: s.Actions, Guard: g, Events: rec,
-		Docs: router.NewStaticDocs(docs), Redis: rc, Clock: clk, Requests: s.RequestsOf}
+		Docs: router.NewStaticDocs(docs), Redis: rc, Clock: clk, Requests: s.RequestsOf,
+		Catalog: catalog, Inbox: s.PendingInbox}
 	h, err := Handler(s)
 	if err != nil {
 		t.Fatal(err)

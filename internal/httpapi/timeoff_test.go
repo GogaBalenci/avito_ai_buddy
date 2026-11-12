@@ -75,7 +75,7 @@ func TestTimeOffValidation(t *testing.T) {
 	// A-17, AC-27, AC-28: identity and reason fields are refused
 	expect(t, be.do("POST", "/api/actions", map[string]any{"kind": "time_off", "params": map[string]any{"date_from": "2026-11-13", "date_to": "2026-11-13", "reason": "болею"}}), http.StatusBadRequest)
 	expect(t, be.do("POST", "/api/actions", map[string]any{"kind": "time_off", "employee_id": "u-intern-fe", "params": map[string]any{"date_from": "2026-11-13"}}), http.StatusBadRequest)
-	expect(t, be.do("POST", "/api/actions", map[string]any{"kind": "access", "params": map[string]any{"resource_id": "team-channels"}}), http.StatusNotImplemented)
+	expect(t, be.do("POST", "/api/actions", map[string]any{"kind": "access", "params": map[string]any{"resource_id": "team-channels", "date_from": "2026-11-13"}}), http.StatusBadRequest)
 }
 
 // A-08, A-09, A-10, A-15, A-16, A-20, A-21

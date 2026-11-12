@@ -24,10 +24,10 @@ func TestGetPathDemoBackend(t *testing.T) {
 	if v.Day != 4 || v.CurrentPeriod != "week1" || v.State != "ready" || v.ReadOnly {
 		t.Fatalf("day %d period %s state %s", v.Day, v.CurrentPeriod, v.State)
 	}
-	if v.NextStep == nil || v.NextStep.StepId != "be-1.11" {
-		t.Fatalf("next = %+v (cm-1.7 is temporarily seeded done until S4)", v.NextStep)
+	if v.NextStep == nil || v.NextStep.StepId != "cm-1.7" || !v.HasPendingRequests || v.StaleRequests { // 11 §1.13, XA-07
+		t.Fatalf("next = %+v pending %v stale %v", v.NextStep, v.HasPendingRequests, v.StaleRequests)
 	}
-	if len(v.Waiting) != 1 || v.Waiting[0] != "cm-1.10" || v.Progress.PeriodDone != 3 || v.Progress.PeriodTotal != 12 {
+	if len(v.Waiting) != 1 || v.Waiting[0] != "cm-1.10" || v.Progress.PeriodDone != 2 || v.Progress.PeriodTotal != 12 {
 		t.Fatalf("waiting %v progress %+v", v.Waiting, v.Progress)
 	}
 	if v.Employee.Track.Id != "backend" || v.Today.String() != "2026-11-10" || v.StartDate.String() != "2026-11-07" {
@@ -56,7 +56,7 @@ func TestMarkStep(t *testing.T) {
 	rec := be.do("POST", "/api/path/steps/be-1.11/status", body)
 	expect(t, rec, http.StatusOK)
 	res := decode[api.StepStatusResult](t, rec)
-	if !res.Changed || res.Step.Status != "done" || res.PathSummary.Progress.PeriodDone != 4 || res.PathSummary.NextStep.StepId != "be-1.12" {
+	if !res.Changed || res.Step.Status != "done" || res.PathSummary.Progress.PeriodDone != 3 || res.PathSummary.NextStep.StepId != "cm-1.7" {
 		t.Fatalf("result %+v", res)
 	}
 	expect(t, be.do("POST", "/api/path/steps/be-1.11/status", body), http.StatusOK)
