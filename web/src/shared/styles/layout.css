@@ -1,0 +1,29 @@
+.shell { min-height: 100%; display: flex; flex-direction: column; }
+.header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: var(--space-5); padding: var(--space-2) var(--space-5); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.brand { display: flex; align-items: center; gap: var(--space-2); color: var(--color-text); }
+.brand:hover { text-decoration: none; }
+.brand__sub { display: block; }
+.nav { display: flex; gap: var(--space-1); }
+.nav__link { padding: 6px 12px; border-radius: var(--radius-s); color: var(--color-text-muted); font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.nav__link:hover { background: var(--color-surface-muted); text-decoration: none; }
+.nav__link--active { background: var(--color-surface-muted); color: var(--color-text); }
+.header__right { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+.user { display: inline-flex; gap: var(--space-2); align-items: center; font-weight: 600; }
+.shell__body { flex: 1; min-height: 0; }
+.page { max-width: 960px; margin: 0 auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
+.demo { position: relative; }
+.demo__panel { position: absolute; right: 0; top: calc(100% + 8px); width: 320px; display: flex; flex-direction: column; gap: var(--space-3); z-index: 30; box-shadow: var(--shadow-2); }
+
+.login { max-width: 760px; margin: 0 auto; padding: var(--space-6) var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+.login__hero { display: flex; gap: var(--space-4); align-items: center; }
+.login__list { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.login__item { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-m); }
+
+.home { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: var(--space-4); padding: var(--space-4) var(--space-5); height: calc(100vh - 57px); }
+.home__chat { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
+.home__path { overflow-y: auto; min-height: 0; }
+@media (max-width: 960px) {
+  .home { grid-template-columns: 1fr; height: auto; }
+  .home__chat { height: 70vh; }
+  .header { flex-wrap: wrap; gap: var(--space-2); }
+}
