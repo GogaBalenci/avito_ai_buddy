@@ -306,6 +306,25 @@ describe('stage celebration (09 §17.8, AG-34)', () => {
     expect(screen.queryByText(celebration, { selector: '.toast span' })).toBeNull()
   })
 
+  it('a step closed by an auto-approved request (no pending phase) celebrates on refetch', async () => {
+    let n = 0
+    const base = f.path()
+    const lastOpen = f.path({
+      has_pending_requests: true, // включает опрос
+      steps: base.steps.map((s) => (s.period === 'week1' && s.step_id !== 'cm-1.7' ? { ...s, status: 'done' as const, request: null } : s)),
+    })
+    server.use(
+      http.get('/api/config', () => HttpResponse.json({ ...f.config, poll_interval_ms: 60 })),
+      http.get('/api/path', () => {
+        n++
+        if (n === 1) return HttpResponse.json(lastOpen)
+        return HttpResponse.json(f.path({ ...lastOpen, has_pending_requests: false, steps: lastOpen.steps.map((s) => (s.step_id === 'cm-1.7' ? { ...s, status: 'done' as const } : s)) }))
+      }),
+    )
+    renderApp('/')
+    expect(await screen.findByText(celebration, { selector: '.toast span' }, { timeout: 3000 })).toBeInTheDocument()
+  })
+
   it('approval of the last request of the week celebrates too', async () => {
     let n = 0
     const base = f.path()

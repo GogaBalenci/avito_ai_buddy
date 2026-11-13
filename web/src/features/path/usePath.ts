@@ -11,6 +11,9 @@ import { celebrate } from './celebrate'
 
 export const PATH_KEY = ['path'] as const
 
+/** Оптимистичные снимки пути: на них праздник не срабатывает и база сравнения не сдвигается (09 §17.8). */
+const optimisticViews = new WeakSet<PathView>()
+
 /** Общие опции запроса пути: панель и приветствие чата читают один кэш. */
 export const pathQuery = {
   queryKey: PATH_KEY,
@@ -34,7 +37,7 @@ export function usePath() {
 function usePathTransitions(data: PathView | undefined) {
   const prev = useRef<PathView | undefined>(undefined)
   useEffect(() => {
-    if (!data) return
+    if (!data || optimisticViews.has(data)) return
     const transitions = requestTransitions(prev.current, data)
     for (const t of transitions) {
       if (t.to === 'approved') {
@@ -45,7 +48,7 @@ function usePathTransitions(data: PathView | undefined) {
         toast(`Заявку по шагу «${t.step.title}» отклонили${reason ? `: ${REJECT_REASON[reason] ?? reason}` : ''}`, { tone: 'error', durationMs: 8000 })
       }
     }
-    if (transitions.some((t) => t.to === 'approved')) celebrate(prev.current, data) // 09 §17.8
+    celebrate(prev.current, data) // 09 §17.8: отметка, одобрение, подтверждённая заявка — по данным сервера
     prev.current = data
   }, [data])
 }
@@ -67,10 +70,14 @@ export function useMarkStep() {
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: PATH_KEY })
       const snapshot = qc.getQueryData<PathView>(PATH_KEY)
-      if (snapshot) qc.setQueryData<PathView>(PATH_KEY, applyStatus(snapshot, v.stepId, v.to))
+      if (snapshot) {
+        const optimistic = applyStatus(snapshot, v.stepId, v.to)
+        optimisticViews.add(optimistic)
+        qc.setQueryData<PathView>(PATH_KEY, optimistic)
+      }
       return { snapshot }
     },
-    onSuccess: (res, v, ctx) => {
+    onSuccess: (res, v) => {
       qc.setQueryData<PathView>(PATH_KEY, (old) =>
         old
           ? {
@@ -85,7 +92,6 @@ export function useMarkStep() {
       )
       if (v.to === 'done') {
         useMascot.getState().setClient('done')
-        celebrate(ctx?.snapshot, qc.getQueryData<PathView>(PATH_KEY)) // только по ответу сервера (09 §17.8)
         toast(`Отмечено: «${res.step.title}»`, {
           tone: 'success',
           action: { label: 'Отменить', onClick: () => m.mutate({ stepId: v.stepId, to: 'in_progress', expected: 'done', key: newId(), undo: true }) },
