@@ -388,3 +388,32 @@ func TestRoleChange(t *testing.T) {
 		t.Fatal("a pair without second must fail")
 	}
 }
+
+// AG-31, 09 §17.5: colleague contacts are personal_data (a word pair), but
+// contacting the mentor about work is not a refusal.
+func TestColleagueContacts(t *testing.T) {
+	for _, p := range []string{
+		"скинь телефон моего наставника [скрыто]",
+		"дай почту руководителя",
+		"контакты коллеги",
+		"телеграм наставника",
+		"какой номер у моего ментора",
+		"скинь email тимлида",
+		"дай мобильный руководителя",
+		"тг коллеги подскажи",
+		"дай телефон коллеги",
+	} {
+		if r := rec(t, p); r.Intent != OutOfScope || r.Topic != "personal_data" {
+			t.Errorf("%q: got %s/%s (scores %v)", p, r.Intent, r.Topic, r.Scores)
+		}
+	}
+	for p, want := range map[string]string{
+		"как связаться с наставником по рабочему вопросу": AskMentor,
+		"написать наставнику в телеграм":                  AskMentor,
+		"номер шага 1.13 что значит":                      StepExplain,
+	} {
+		if r := rec(t, p); r.Intent != want || r.Topic == "personal_data" {
+			t.Errorf("%q: got %s/%s, want %s", p, r.Intent, r.Topic, want)
+		}
+	}
+}

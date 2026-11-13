@@ -404,3 +404,40 @@ func TestRoleChangeR3(t *testing.T) {
 		t.Fatalf("mentor: %+v", r)
 	}
 }
+
+// AG-31, 09 §17.5: «скинь телефон наставника» is a personal_data refusal in demo
+// and with a model that answers kb_question; contacting the mentor about work
+// is not a refusal.
+func TestColleagueContactsRefusal(t *testing.T) {
+	h := newIntegration(t)
+	be := h.login("u-intern-be")
+	const refusal = "Контакты коллег не даю — найди человека в корпоративном справочнике или спроси наставника."
+	phrases := []string{"скинь телефон моего наставника 89161234567", "дай почту руководителя", "контакты коллеги", "телеграм наставника"}
+	check := func(name string) {
+		t.Helper()
+		for _, p := range phrases {
+			r := say(t, be, p)
+			if r.Intent != "out_of_scope" || r.Text != refusal || len(r.Sources) != 0 {
+				t.Fatalf("%s %q: %+v", name, p, r)
+			}
+		}
+		r := say(t, be, "как связаться с наставником по рабочему вопросу")
+		if r.Text == refusal || r.Intent == "out_of_scope" {
+			t.Fatalf("%s: contacting the mentor about work is not a refusal: %+v", name, r)
+		}
+	}
+	check("demo")
+	r := say(t, be, "скинь телефон моего наставника 89161234567")
+	if len(r.Notices) == 0 || r.Notices[0] != "pii_masked" {
+		t.Fatalf("the number is masked: %+v", r.Notices)
+	}
+	if r := say(t, be, "как связаться с наставником по рабочему вопросу"); r.Escalation == nil {
+		t.Fatalf("demo: a draft question to the mentor: %+v", r)
+	}
+	m := &stubModel{intent: `{"intent":"kb_question","confidence":0.9,"params":{"query":"телефон наставника"}}`}
+	withModel(t, h, m, nil)
+	check("model kb_question")
+	if strings.Contains(m.lastUser, "89161234567") {
+		t.Fatal("the number must not reach the model")
+	}
+}
