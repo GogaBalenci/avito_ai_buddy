@@ -38,7 +38,7 @@ export function useResetDemo() {
   return useMutation({
     mutationFn: () => api('/api/demo/reset', { method: 'POST' }),
     onSuccess: () => {
-      resetClientState(qc, { keepMe: true })
+      resetClientState(qc, { keepMe: true, refetch: true })
       toast('Демо-данные сброшены — можно пройти сценарий заново', { tone: 'success' })
     },
     onError: (e) => toast(errorText(e), { tone: 'error' }),

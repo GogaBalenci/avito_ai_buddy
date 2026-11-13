@@ -94,7 +94,12 @@ describe('login and shell (wave 2)', () => {
   it('demo panel: reset and flags', async () => {
     let reset = 0
     let flagBody: unknown
+    let pathCalls = 0
     server.use(
+      http.get('/api/path', () => {
+        pathCalls++
+        return HttpResponse.json(pathCalls > 1 ? f.path({ progress: { period_done: 0, period_total: 6, overall_done: 0, overall_total: 7 } }) : f.path())
+      }),
       http.post('/api/demo/reset', () => {
         reset++
         return new HttpResponse(null, { status: 204 })
@@ -110,6 +115,8 @@ describe('login and shell (wave 2)', () => {
     await userEvent.click(within(panel).getByRole('button', { name: 'Сбросить демо-данные' }))
     expect(await screen.findByText(/Демо-данные сброшены/)).toBeInTheDocument()
     expect(reset).toBe(1)
+    // открытая панель «Мой путь» перечитывает путь сразу, без «Обновить»
+    await waitFor(() => expect(screen.getByRole('progressbar', { name: 'Готово на этапе' })).toHaveAttribute('aria-valuenow', '0'))
     const select = await within(panel).findByLabelText('Сбой сервиса отсутствий')
     await userEvent.selectOptions(select, 'unavailable')
     expect(await screen.findByText('Сбой сервиса отсутствий: недоступен')).toBeInTheDocument()
