@@ -1,5 +1,8 @@
 // «Авиитик Витя» — щенок-стажёр (Авиитик — от «ИИ», коротко Витя). 5 состояний (09 §10.2).
 // Оригинальный рисунок; цвета — из семантических токенов темы.
+// Живые состояния (09 §17.7, AG-33) — только CSS-классы в base.css: done — хвост
+// машет, thinking — уши шевелятся, oops — уши опущены, hello — моргает;
+// при prefers-reduced-motion анимаций нет.
 
 export type VityaState = 'hello' | 'thinking' | 'done' | 'oops' | 'ask_mentor'
 
@@ -23,7 +26,7 @@ function Eyes({ state }: { state: VityaState }) {
   const dx = state === 'thinking' ? 2 : 0
   const dy = state === 'thinking' ? -3 : 0
   return (
-    <g>
+    <g className="vitya__eyes">
       <ellipse cx="48" cy="58" rx="5" ry="6" className="vitya__ink" />
       <ellipse cx="72" cy="58" rx="5" ry="6" className="vitya__ink" />
       <circle cx={49.5 + dx} cy={56 + dy} r="1.8" fill="#fff" />
@@ -89,10 +92,12 @@ export function Vitya({ state, size = 72 }: { state: VityaState; size?: number }
   return (
     <svg className={`vitya vitya--${state}`} width={size} height={size} viewBox="0 0 120 120" role="img" aria-label={TITLES[state]} data-state={state}>
       <title>{TITLES[state]}</title>
+      {/* хвост — за головой, машет в done */}
+      <path d="M22 104 q-14 -4 -14 -20 q0 -6 5 -5 q2 12 13 17 z" className="vitya__fur vitya__tail" />
       <g transform={tilt}>
         {/* уши */}
-        <path d="M26 40 q-14 18 -6 40 q8 2 14 -6 q-2 -20 6 -30 z" className="vitya__ear" />
-        <path d="M94 40 q14 18 6 40 q-8 2 -14 -6 q2 -20 -6 -30 z" className="vitya__ear" />
+        <path d="M26 40 q-14 18 -6 40 q8 2 14 -6 q-2 -20 6 -30 z" className="vitya__ear vitya__ear--l" />
+        <path d="M94 40 q14 18 6 40 q-8 2 -14 -6 q2 -20 -6 -30 z" className="vitya__ear vitya__ear--r" />
         {/* голова */}
         <ellipse cx="60" cy="62" rx="36" ry="33" className="vitya__fur" />
         <ellipse cx="60" cy="74" rx="18" ry="13" className="vitya__muzzle" />

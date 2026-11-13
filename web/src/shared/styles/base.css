@@ -86,4 +86,23 @@ p { margin: 0 0 var(--space-2); }
 .vitya--thinking .vitya__dots circle:nth-child(2) { animation-delay: .2s; }
 .vitya--thinking .vitya__dots circle:nth-child(3) { animation-delay: .4s; }
 @keyframes blink { 50% { opacity: .2; } }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+/* живые состояния маскота (09 §17.7, AG-33) */
+.vitya__tail, .vitya__ear, .vitya__eyes { transform-box: fill-box; transition: transform .3s ease; }
+.vitya__tail { transform-origin: 100% 100%; }
+.vitya__ear--l { transform-origin: 70% 0; }
+.vitya__ear--r { transform-origin: 30% 0; }
+.vitya__eyes { transform-origin: 50% 50%; }
+.vitya--done .vitya__tail { animation: vitya-wag .45s ease-in-out 4 alternate; }
+.vitya--thinking .vitya__ear--l { animation: vitya-ear-l 1.4s ease-in-out infinite; }
+.vitya--thinking .vitya__ear--r { animation: vitya-ear-r 1.4s ease-in-out .2s infinite; }
+.vitya--oops .vitya__ear--l { transform: rotate(18deg); }
+.vitya--oops .vitya__ear--r { transform: rotate(-18deg); }
+.vitya--hello .vitya__eyes { animation: vitya-blink 4.5s ease-in-out infinite; }
+@keyframes vitya-wag { from { transform: rotate(-14deg); } to { transform: rotate(16deg); } }
+@keyframes vitya-ear-l { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-10deg); } }
+@keyframes vitya-ear-r { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(10deg); } }
+@keyframes vitya-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; }
+  .vitya, .vitya * { animation: none !important; transition: none !important; }
+}
