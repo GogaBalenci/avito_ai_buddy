@@ -111,7 +111,7 @@ REGISTRY_PREFIX=mirror.gcr.io/ docker compose up --build --wait
 4. Войдите снова как «Стажёр Backend»: шаг «Запроси доступ в пространство кластера» уже «Готово».
 
 ### 6. Стажёр Frontend
-Войдите как «Стажёр Frontend». Путь другой: трек помечен как тестовый, неделя 2, в «Что дальше» — хвост недели 1. Отметьте оставшиеся шаги недели 1 пройденными: после последнего Витя порадуется и покажет «Неделя 1 позади! 🎉 Обсуди её с наставником на 1:1» (один раз за сессию). Новое направление добавляется YAML-файлом в `content/tracks/` без изменения кода.
+Войдите как «Стажёр Frontend». Путь другой: трек помечен как тестовый, неделя 2, в «Что дальше» — хвост недели 1. Нажмите в «Что дальше» «Запросить доступ» (канал фронтенд-сообщества) и подтвердите черновик: заявка одобрится сразу, неделя 1 закроется, и Витя покажет «Неделя 1 позади! 🎉 Обсуди её с наставником на 1:1» (один раз за сессию). Новое направление добавляется YAML-файлом в `content/tracks/` без изменения кода.
 
 Сценарии S1–S4 и экран наставника проходит автоматически и smoke-тест через API: `docker compose --profile test run --rm smoke` (тест сбрасывает демо-данные).
 
@@ -237,9 +237,9 @@ docker compose --profile test run --rm smoke      # S1–S4 и наставни�
 
 | Отчёт | Что входит | Порог | Последний прогон | Где смотреть |
 |---|---|---|---|---|
-| Go — приложение | Все пакеты, кроме имитаций и сгенерированного кода. Общие с имитациями пакеты (`internal/timeoff/rules`, `internal/checklist`, `internal/tracks`, `internal/kb`, `internal/employees`) входят в порог | 80% statements (цель 85%), CI падает ниже порога | 87,6% statements | `coverage/go-app.html`, `coverage/go-app.txt` |
-| Go — имитации `mcp-mocks` | `internal/mcpmocks`, `cmd/mcp-mocks` | **вне порога**, справочно | 70,9% statements | `coverage/go-mocks.html` |
-| Фронт | Весь код `web/src`: хуки, сторы, схемы Zod, API-клиент, экраны | 80% по каждой метрике: lines, statements, functions, branches | lines 98,5% · statements 97,5% · functions 95,2% · branches 91,8% | `web/coverage/index.html`, `web/coverage/lcov.info` |
+| Go — приложение | Все пакеты, кроме имитаций и сгенерированного кода. Общие с имитациями пакеты (`internal/timeoff/rules`, `internal/checklist`, `internal/tracks`, `internal/kb`, `internal/employees`) входят в порог | 80% statements (цель 85%), CI падает ниже порога | 91,1% statements | `coverage/go-app.html`, `coverage/go-app.txt` |
+| Go — имитации `mcp-mocks` | `internal/mcpmocks`, `cmd/mcp-mocks` | **вне порога**, справочно | 70,5% statements | `coverage/go-mocks.html` |
+| Фронт | Весь код `web/src`: хуки, сторы, схемы Zod, API-клиент, экраны | 80% по каждой метрике: lines, statements, functions, branches | lines 98,5% · statements 97,5% · functions 95,2% · branches 91,9% | `web/coverage/index.html`, `web/coverage/lcov.info` |
 
 **Почему `mcp-mocks` вне порога.** На Q&A 10.11 эксперт кейса ответил, что код имитаций в прикладной код не входит, а код веб-интерфейса в порог входит ([`docs/16-qa-webinar.md`, §8 «Проверка и сдача»](docs/16-qa-webinar.md#8-проверка-и-сдача), таймкоды Ч2 22:33 и 31:28). Имитации всё равно покрыты тестами (контракты, права, идемпотентность), их отчёт публикуется отдельно.
 
