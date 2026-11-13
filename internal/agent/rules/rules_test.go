@@ -257,7 +257,7 @@ func TestEmptyAndConfidence(t *testing.T) {
 	if r := rec(t, "хочу отгул"); r.Confidence != 0.9 {
 		t.Fatalf("confidence: %+v", r)
 	}
-	if r := rec(t, "привет"); r.Confidence != 0.7 {
+	if r := rec(t, "помощь"); r.Confidence != 0.7 {
 		t.Fatalf("confidence: %+v", r)
 	}
 	if r := rec(t, "мой номер [скрыто]"); r.ContentTokens != 1 {
@@ -274,6 +274,76 @@ func TestIsConfirmWord(t *testing.T) {
 	for _, s := range []string{"да, а что дальше", "хочу отгул", ""} {
 		if IsConfirmWord(s) {
 			t.Errorf("%q must not be a confirm word", s)
+		}
+	}
+}
+
+// AG-29, 09 §17.3: chit-chat is a topic of help, 5+ phrasings per kind.
+func TestSmallTalkKinds(t *testing.T) {
+	cases := map[string][]string{
+		"greeting":    {"привет", "Привет!", "здравствуйте", "добрый день", "доброе утро, Витя", "хай", "приветик"},
+		"how_are_you": {"как дела?", "как ты?", "как жизнь", "как настроение, Витя?", "как поживаешь", "привет, как дела"},
+		"who_are_you": {"ты кто?", "кто ты такой", "ты бот?", "ты робот или человек?", "как тебя зовут", "ты живой?"},
+		"thanks":      {"спасибо", "Спасибо большое!", "благодарю", "спс", "спасибо, Витя", "мерси"},
+		"bye":         {"пока", "пока-пока", "до свидания", "до встречи", "увидимся", "до завтра"},
+		"music":       {"какую музыку ты слушаешь", "любишь музыку?", "что слушаешь?", "какие песни нравятся", "скинь плейлист"},
+		"likes":       {"что ты любишь?", "что любишь", "какое у тебя хобби", "чем увлекаешься", "какая любимая еда", "что тебе нравится"},
+		"compliment":  {"ты молодец", "ты классный", "ты лучший!", "умница", "ты милый", "ты крутой"},
+		"joke":        {"расскажи шутку", "пошути", "расскажи анекдот", "рассмеши меня", "знаешь анекдоты?"},
+	}
+	for kind, phrases := range cases {
+		if len(phrases) < 5 {
+			t.Fatalf("%s: need at least 5 phrasings", kind)
+		}
+		for _, p := range phrases {
+			r := rec(t, p)
+			if r.Intent != Help || SmallTalkKind(r.Topic) != kind || r.Confidence != 0.9 {
+				t.Errorf("%q: got %s/%s, want help/small_talk:%s", p, r.Intent, r.Topic, kind)
+			}
+		}
+	}
+	if SmallTalkKind("salary") != "" || SmallTalkKind(SmallTalkPrefix+"bye") != "bye" {
+		t.Fatal("SmallTalkKind")
+	}
+}
+
+// Chit-chat has the lowest priority: it never takes intents or guard topics.
+func TestSmallTalkFalsePositives(t *testing.T) {
+	cases := map[string]string{
+		"спасибо, а как оформить отгул":        TimeOff,
+		"привет, хочу отгул":                   TimeOff,
+		"спасибо, добавь меня в канал":         AccessRequest,
+		"привет, что мне делать дальше":        MyPath,
+		"спасибо, что с заявкой":               MyRequests,
+		"привет, что умеешь":                   Help,
+		"привет, у меня температура":           OutOfScope,
+		"спасибо, кажется, я выгорел":          OutOfScope,
+		"пока, когда зарплата":                 OutOfScope,
+		"спасибо, а где почитать про деплой":   KBQuestion,
+		"как ты думаешь, сколько ждать ревью":  KBQuestion,
+		"отгул мне пока не нужен":              KBQuestion,
+		"что такое музыкальный сервис в авито": KBQuestion,
+		"пока не понял, как настроить vpn":     KBQuestion,
+	}
+	for p, want := range cases {
+		r := rec(t, p)
+		if r.Intent != want || SmallTalkKind(r.Topic) != "" {
+			t.Errorf("%q: got %s/%s, want %s", p, r.Intent, r.Topic, want)
+		}
+	}
+	if r := rec(t, "ыыы"); r.Intent == Help {
+		t.Fatalf("nonsense is not chit-chat: %+v", r)
+	}
+}
+
+func TestSmallTalkDictErrors(t *testing.T) {
+	base := "version: 1\nthreshold: 1\npriority: [help]\nintents:\n  help:\n    words: {помощь: 1}\n"
+	for _, tail := range []string{
+		"small_talk:\n  order: [a]\n  kinds: {}\n",
+		"small_talk:\n  order: [a]\n  kinds:\n    b: {words: [x]}\n",
+	} {
+		if _, err := Parse([]byte(base + tail)); err == nil {
+			t.Errorf("must fail: %q", tail)
 		}
 	}
 }

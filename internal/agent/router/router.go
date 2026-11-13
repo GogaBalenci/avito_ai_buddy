@@ -249,7 +249,9 @@ func (g *Agent) handleText(ctx context.Context, a actor.Actor, in Input) (Output
 		}
 	}
 	if err == nil && r != nil {
-		g.rephrase(ctx, in, r, &st)
+		if rules.SmallTalkKind(rec.Topic) == "" { // the model never writes chit-chat (AG-29)
+			g.rephrase(ctx, in, r, &st)
+		}
 		st.apply(r)
 	}
 	return Output{Reply: r, rephrased: st.rephrased}, err
@@ -278,6 +280,9 @@ func (g *Agent) route(ctx context.Context, a actor.Actor, in Input, rec recognit
 	}
 	switch rec.Intent {
 	case rules.Help:
+		if kind := rules.SmallTalkKind(rec.Topic); kind != "" {
+			return g.smallTalk(ctx, a, in, kind), nil
+		}
 		return g.help(in, a), nil
 	case rules.MyPath:
 		return g.myPath(ctx, a, in), nil

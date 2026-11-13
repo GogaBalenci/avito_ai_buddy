@@ -129,6 +129,10 @@ func (g *Agent) merge(ctx context.Context, ir llm.IntentResult, h rules.Hints, l
 		rec.Override = "llm" // the guard topic of the rules wins over the model
 		return
 	}
+	if rules.SmallTalkKind(rec.Topic) != "" && (ir.Intent == rules.Help || ir.Intent == rules.KBQuestion || ir.Intent == rules.Unknown) {
+		rec.Override = "llm" // chit-chat of the rules: the model does not answer it (09 §17.3)
+		return
+	}
 	merged := recognition{Result: rules.Result{Intent: ir.Intent, Confidence: ir.Confidence, ContentTokens: rec.ContentTokens,
 		Second: rec.Second}, Source: "llm", Query: rec.Query}
 	if ir.Intent == rules.OutOfScope {

@@ -73,6 +73,27 @@ type rawDict struct {
 	} `json:"negation"`
 	StopWords []string             `json:"stop_words"`
 	Intents   map[string]rawIntent `json:"intents"`
+	SmallTalk rawSmallTalk         `json:"small_talk"`
+}
+
+// rawSmallTalk is chit-chat (09 §17.3): a topic of help with the lowest priority.
+type rawSmallTalk struct {
+	MaxUncovered int                     `json:"max_uncovered"`
+	Order        []string                `json:"order"`
+	Ignore       []string                `json:"ignore"`
+	Kinds        map[string]rawSmallKind `json:"kinds"`
+}
+
+type rawSmallKind struct {
+	Words     []string `json:"words"`
+	Phrases   []string `json:"phrases"`
+	EdgeWords []string `json:"edge_words"` // count only as the first or the last token
+}
+
+type smallKind struct {
+	name     string
+	patterns [][]string
+	edge     map[string]bool
 }
 
 type pattern struct {
@@ -94,6 +115,9 @@ type Dict struct {
 	aliasBonus   float64
 	stepRefBonus float64
 	requiresStep bool
+	small        []smallKind // in the order of priority on a tie
+	smallMax     int
+	smallIgnore  map[string]bool
 }
 
 // Load compiles the embedded dictionary.
@@ -165,7 +189,32 @@ func Parse(b []byte) (*Dict, error) {
 			}
 		}
 	}
+	if err := d.compileSmallTalk(r.SmallTalk); err != nil {
+		return nil, err
+	}
 	return d, nil
+}
+
+func (d *Dict) compileSmallTalk(st rawSmallTalk) error {
+	if len(st.Kinds) != len(st.Order) {
+		return fmt.Errorf("intents dictionary: small_talk.order must list every kind once")
+	}
+	d.smallMax, d.smallIgnore = st.MaxUncovered, set(st.Ignore)
+	for _, name := range st.Order {
+		k, ok := st.Kinds[name]
+		if !ok {
+			return fmt.Errorf("intents dictionary: small_talk kind %q is missing", name)
+		}
+		sk := smallKind{name: name, edge: stemSet(k.EdgeWords)}
+		for _, w := range append(append([]string{}, k.Words...), k.Phrases...) {
+			sk.patterns = append(sk.patterns, StemPhrase(w))
+		}
+		for e := range sk.edge {
+			sk.patterns = append(sk.patterns, []string{e})
+		}
+		d.small = append(d.small, sk)
+	}
+	return nil
 }
 
 func set(xs []string) map[string]bool {
@@ -427,6 +476,11 @@ func (d *Dict) Recognize(text string, h Hints) Result {
 		return d.priority[cs[a].name] < d.priority[cs[b].name]
 	})
 	if len(cs) == 0 {
+		// p. 5a (09 §17.3): chit-chat only when no intent reached the threshold
+		if kind := d.smallTalk(in, content); kind != "" {
+			res.Intent, res.Topic, res.Confidence = Help, SmallTalkPrefix+kind, 0.9
+			return res
+		}
 		if res.ContentTokens >= 1 {
 			res.Intent, res.Confidence = KBQuestion, 0.5
 		} else {
@@ -457,6 +511,59 @@ func (d *Dict) Recognize(text string, h Hints) Result {
 		}
 	}
 	return res
+}
+
+// SmallTalkPrefix marks a chit-chat topic of help: "small_talk:thanks".
+const SmallTalkPrefix = "small_talk:"
+
+// SmallTalkKind returns the chit-chat kind of a topic or "".
+func SmallTalkKind(topic string) string {
+	if k, ok := strings.CutPrefix(topic, SmallTalkPrefix); ok {
+		return k
+	}
+	return ""
+}
+
+// smallTalk returns the chit-chat kind when its matches cover the message:
+// at most smallMax content tokens (besides addressing words) stay uncovered.
+// The kind with the most covered tokens wins; a tie goes by the order.
+func (d *Dict) smallTalk(in input, content []int) string {
+	covered := map[int]bool{}
+	bestKind, bestN := "", 0
+	last := len(in.raw) - 1
+	for _, k := range d.small {
+		n := 0
+		for _, p := range k.patterns {
+			for _, st := range find(in, p) {
+				if len(p) == 1 && k.edge[p[0]] && st != 0 && st != last {
+					continue
+				}
+				if d.negated(in, st, len(p), d.hasNeg(p)) {
+					continue
+				}
+				for i := st; i < st+len(p); i++ {
+					covered[i] = true
+				}
+				n += len(p)
+			}
+		}
+		if n > bestN {
+			bestKind, bestN = k.name, n
+		}
+	}
+	if bestKind == "" {
+		return ""
+	}
+	uncovered := 0
+	for _, i := range content {
+		if !covered[i] && !d.smallIgnore[in.raw[i]] {
+			uncovered++
+		}
+	}
+	if uncovered > d.smallMax {
+		return ""
+	}
+	return bestKind
 }
 
 func best(m map[string]float64) (string, float64) {

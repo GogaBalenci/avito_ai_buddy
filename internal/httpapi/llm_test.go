@@ -334,3 +334,27 @@ func TestLLMGuardRejectsAndAuthWindow(t *testing.T) {
 		t.Fatal("the model is retried after 10 minutes")
 	}
 }
+
+// AG-29: with a model chit-chat stays a template of the rules — the model's
+// kb_question/help does not win and step 2 is not called.
+func TestLLMSmallTalkStaysTemplate(t *testing.T) {
+	h := newIntegration(t)
+	m := &stubModel{intent: `{"intent":"kb_question","confidence":0.9,"params":{"query":"музыка"}}`}
+	withModel(t, h, m, nil)
+	be := h.login("u-intern-be")
+	r := say(t, be, "какую музыку ты слушаешь")
+	if r.Intent != "help" || !strings.Contains(r.Text, "следующий шаг") || len(r.Sources) != 0 || m.rephrased != 0 {
+		t.Fatalf("chit-chat with a model: %+v (rephrased %d)", r, m.rephrased)
+	}
+	if lastPayload(h, "intent_recognized", "override") != "llm" {
+		t.Fatal("override llm")
+	}
+	m.intent = `{"intent":"help","confidence":0.9,"params":{}}`
+	if r = say(t, be, "спасибо!"); r.Intent != "help" || !strings.Contains(r.Text, "следующий шаг") || m.rephrased != 0 {
+		t.Fatalf("thanks: %+v", r)
+	}
+	m.intent = `{"intent":"time_off","confidence":0.9,"params":{}}`
+	if r = say(t, be, "спасибо, а как оформить отгул"); r.Intent != "time_off" || hasAction(r, api.OpenForm) == nil {
+		t.Fatalf("an action beats chit-chat: %+v", r)
+	}
+}

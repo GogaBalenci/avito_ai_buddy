@@ -25,7 +25,7 @@ import (
 
 // Prompt versions (AG-22): bump when a prompt file changes.
 const (
-	IntentVersion   = "intent-v1"
+	IntentVersion   = "intent-v2"
 	RephraseVersion = "rephrase-v2"
 )
 
