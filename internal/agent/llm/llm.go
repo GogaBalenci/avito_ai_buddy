@@ -26,7 +26,7 @@ import (
 // Prompt versions (AG-22): bump when a prompt file changes.
 const (
 	IntentVersion   = "intent-v1"
-	RephraseVersion = "rephrase-v1"
+	RephraseVersion = "rephrase-v2"
 )
 
 //go:embed prompts/*

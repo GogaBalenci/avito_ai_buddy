@@ -340,3 +340,24 @@ func TestPromptsLoaded(t *testing.T) {
 		t.Fatal("prompts")
 	}
 }
+
+// AG-28: the rephrase prompt describes Vitya's voice; ReplyGuard is unchanged:
+// an emoji and a light joke pass, a new fact does not.
+func TestRephraseVoice(t *testing.T) {
+	for _, want := range []string{"Голос:", "щенок-стажёр", "на «ты»", "Без шуток и эмодзи", "здоровье"} {
+		if !strings.Contains(rephraseSystem, want) {
+			t.Errorf("rephrase prompt lacks %q", want)
+		}
+	}
+	if RephraseVersion != "rephrase-v2" {
+		t.Fatalf("prompt version: %s", RephraseVersion)
+	}
+	in := RephraseInput{DraftText: "Ты на этапе «Неделя 1», готово 2 из 12. Дальше — «Каналы».",
+		Facts: []string{"Ты на этапе «Неделя 1», готово 2 из 12. Дальше — «Каналы»."}, MaxChars: 400}
+	if rule := Check("Гав! Ты на этапе «Неделя 1», уже 2 из 12 🐶 Дальше — «Каналы», хвост виляет.", in); rule != 0 {
+		t.Fatalf("emoji and a light joke must pass, rule %d", rule)
+	}
+	if rule := Check("Гав! Готово 2 из 12, а за 3 дня закончишь «Каналы» 🐶", in); rule != RuleNumbers {
+		t.Fatalf("a new fact must be rejected, rule %d", rule)
+	}
+}
