@@ -804,13 +804,13 @@ func (g *Agent) unknown(ctx context.Context, a actor.Actor, in Input, l *path.Lo
 	if n >= 2 {
 		g.Redis.Del(ctx, unkKey(a.UserID))
 		r.MascotState = api.MascotStateAskMentor
-		r.Text = "Кажется, я не понимаю. Вот что я умею — или давай спросим наставника, вот черновик."
+		r.Text = pick(in.ClientMessageID, notUnderstoodAgain)
 		menu(r, a.Role)
 		period, step := g.contextOf(ctx, a, l)
 		g.escalate(ctx, a, r, "not_understood", in.Text, period, step, nil)
 		return r
 	}
-	r.Text = "Не понял тебя. Я умею вот это:"
+	r.Text = pick(in.ClientMessageID, notUnderstood)
 	menu(r, a.Role)
 	opts := []string{rules.MyPath, rules.TimeOff, rules.AccessRequest, rules.AskMentor}
 	if a.Role == actor.Mentor {
