@@ -29,7 +29,7 @@ function onMessage(over: Partial<AgentReply>, seen?: unknown[]) {
 
 async function openChat() {
   const r = renderApp('/')
-  await within(await screen.findByRole('region', { name: 'Чат с Витей' })).findByText(/Привет! Я Витя/)
+  await within(await screen.findByRole('region', { name: 'Чат с Витей' })).findByTestId('greeting')
   return r
 }
 
@@ -55,7 +55,9 @@ describe('chat (wave 4)', () => {
   it('empty chat greets with starter buttons that send intent payloads', async () => {
     const seen: { payload?: string }[] = []
     onMessage({ intent: 'my_path', text: 'Ты на этапе «Неделя 1»' }, seen)
+    server.use(http.get('/api/path', () => HttpResponse.json(f.path({ state: 'finished', next_step: null }))))
     await openChat()
+    await within(chat()).findByText(/Все шаги пройдены/)
     await userEvent.click(within(chat()).getByRole('button', { name: 'Что мне делать дальше?' }))
     expect(await within(chat()).findByText('Ты на этапе «Неделя 1»')).toBeInTheDocument()
     expect(seen[0]).toMatchObject({ payload: 'intent:my_path' })
@@ -192,7 +194,7 @@ describe('chat (wave 4)', () => {
     renderApp('/')
     expect(await screen.findByText('Сохранённый ответ')).toBeInTheDocument()
     expect(screen.getByText('Разобраться: Изучи «Авито в цифрах»')).toBeInTheDocument()
-    expect(screen.queryByText(/Привет! Я Витя/)).toBeNull()
+    expect(screen.queryByTestId('greeting')).toBeNull()
     expect(useMascot.getState().server).toBe('done')
   })
 
@@ -202,7 +204,7 @@ describe('chat (wave 4)', () => {
     expect(await screen.findByText(/История не загрузилась/)).toBeInTheDocument()
     server.use(http.get('/api/chat/history', () => HttpResponse.json({ items: [] })))
     await userEvent.click(within(chat()).getByRole('button', { name: 'Повторить' }))
-    expect(await screen.findByText(/Привет! Я Витя/)).toBeInTheDocument()
+    expect(await screen.findByTestId('greeting')).toBeInTheDocument()
   })
 
   it('notices: llm plaques once per session, others every time', async () => {

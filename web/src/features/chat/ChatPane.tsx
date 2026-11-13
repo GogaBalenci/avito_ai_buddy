@@ -8,15 +8,51 @@ import { selectMascot, useMascot } from '@/shared/mascot/mascotStore'
 import { sendPayload, useChat, type ChatEntry } from './chatStore'
 import { AgentReplyView } from './AgentReplyView'
 import { previousUserText, visibleNotices } from './replyLogic'
+import { contextGreeting, STATIC_GREETING } from './greeting'
+import { configQuery } from '@/shared/api/queries'
+import { pathQuery } from '@/features/path/usePath'
+import { buttonLabel } from '@/features/path/logic'
 
 const MAX_LEN = 1000
 
-const STARTERS: { label: string; payload: string }[] = [
+type Starter = { label: string; payload: string }
+
+const STARTERS: Starter[] = [
   { label: 'Что мне делать дальше?', payload: 'intent:my_path' },
   { label: 'Оформить отгул', payload: 'intent:time_off' },
   { label: 'Запросить доступ', payload: 'intent:access_request' },
   { label: 'Что ты умеешь?', payload: 'intent:help' },
 ]
+
+/**
+ * Приветствие пустого чата по данным пути (09 §17.6): путь читается из общего
+ * кэша без второго опроса; пока грузится или при ошибке — статичный текст.
+ */
+function Greeting({ disabled }: { disabled: boolean }) {
+  const path = useQuery({ ...pathQuery, refetchOnWindowFocus: false })
+  const config = useQuery(configQuery)
+  let text = STATIC_GREETING
+  let starters = STARTERS
+  if (path.data && !path.isError) {
+    const g = contextGreeting(path.data, new Date(), config.data?.timezone)
+    text = g.text
+    if (g.step) starters = [{ label: buttonLabel(g.step), payload: `step:${g.step.step_id}` }, ...STARTERS.slice(1)]
+  }
+  return (
+    <div className="msg msg--bot" data-testid="greeting">
+      <div className="bubble">
+        <p className="reply__text">{text}</p>
+        <div className="row reply__actions">
+          {starters.map((s) => (
+            <Button key={s.payload} size="s" disabled={disabled} onClick={() => void sendPayload(s.payload, s.label)}>
+              {s.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function useChatHistory() {
   const loadHistory = useChat((s) => s.loadHistory)
@@ -106,20 +142,7 @@ export function ChatPane() {
             </Button>
           </p>
         )}
-        {!history.isPending && entries.length === 0 && (
-          <div className="msg msg--bot">
-            <div className="bubble">
-              <p className="reply__text">Привет! Я Витя, твой бадди на стажировке. Подскажу, что делать дальше, отвечу на вопросы о команде и инструментах, оформлю отгул или заявку на доступ.</p>
-              <div className="row reply__actions">
-                {STARTERS.map((s) => (
-                  <Button key={s.payload} size="s" disabled={!!inFlight} onClick={() => void sendPayload(s.payload, s.label)}>
-                    {s.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {!history.isPending && entries.length === 0 && <Greeting disabled={!!inFlight} />}
         {entries.map((e, i) =>
           e.author === 'user' ? (
             <UserMessage key={e.id} e={e} />

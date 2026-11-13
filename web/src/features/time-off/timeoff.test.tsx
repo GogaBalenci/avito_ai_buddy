@@ -45,7 +45,7 @@ function chatReplies(...replies: Partial<AgentReply>[]) {
 async function openForm(over: Partial<AgentReply> = {}) {
   const sent = chatReplies(formReply(over))
   const r = renderApp('/')
-  await within(await screen.findByRole('region', { name: 'Чат с Витей' })).findByText(/Привет! Я Витя/)
+  await within(await screen.findByRole('region', { name: 'Чат с Витей' })).findByTestId('greeting')
   await userEvent.click(within(chat()).getAllByRole('button', { name: 'Оформить отгул' })[0])
   const form = await within(chat()).findByRole('form', { name: 'Даты отгула' })
   return { ...r, sent, form }

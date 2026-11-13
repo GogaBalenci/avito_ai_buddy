@@ -10,13 +10,18 @@ import { applyStatus, REJECT_REASON, requestTransitions } from './logic'
 
 export const PATH_KEY = ['path'] as const
 
+/** Общие опции запроса пути: панель и приветствие чата читают один кэш. */
+export const pathQuery = {
+  queryKey: PATH_KEY,
+  queryFn: ({ signal }: { signal: AbortSignal }) => api('/api/path', { schema: PathViewSchema, signal }),
+}
+
 /** Путь стажёра. Опрос — только при has_pending_requests и только в активной вкладке (11 §3.6). */
 export function usePath() {
   const config = useQuery(configQuery)
   const interval = config.data?.poll_interval_ms ?? 10_000
   const q = useQuery({
-    queryKey: PATH_KEY,
-    queryFn: ({ signal }) => api('/api/path', { schema: PathViewSchema, signal }),
+    ...pathQuery,
     refetchInterval: (query) => (query.state.data?.has_pending_requests ? interval : false),
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
