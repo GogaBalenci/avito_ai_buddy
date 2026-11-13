@@ -38,4 +38,4 @@
 - [x] 8.2 Тесты
 
 ## 9. Завершение
-- [ ] 9.1 `openspec archive add-vitya-character`, `validate --all --strict`
+- [x] 9.1 `openspec archive add-vitya-character`, `validate --all --strict`
