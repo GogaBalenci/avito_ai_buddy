@@ -98,8 +98,10 @@ describe('context greeting in the chat (MSW)', () => {
     expect(await within(g).findByText(/Неделя 1, день 4 из 7, осталось 4 шага\. Начнём с «Попроси добавить тебя во все ключевые каналы и чаты»\?/)).toBeInTheDocument()
     expect(within(g).getByText(/^(Доброе утро|Добрый день|Добрый вечер|Доброй ночи)!/)).toBeInTheDocument()
     expect(within(g).getByRole('button', { name: 'Оформить отгул' })).toBeInTheDocument()
-    await userEvent.click(within(g).getByRole('button', { name: 'Запросить доступ: Попроси добавить тебя во все ключевые каналы и чаты' }))
+    expect(within(g).getAllByRole('button', { name: 'Запросить доступ' })).toHaveLength(1) // без дубля стартовой кнопки
+    await userEvent.click(within(g).getByRole('button', { name: 'Запросить доступ' }))
     expect(await within(chat()).findByText('Ок')).toBeInTheDocument()
+    expect(within(chat()).getByText('Запросить доступ: Попроси добавить тебя во все ключевые каналы и чаты', { selector: '.bubble--user' })).toBeInTheDocument()
     expect(seen[0]).toMatchObject({ payload: 'step:cm-1.7' })
   })
 

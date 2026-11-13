@@ -11,11 +11,11 @@ import { previousUserText, visibleNotices } from './replyLogic'
 import { contextGreeting, STATIC_GREETING } from './greeting'
 import { configQuery } from '@/shared/api/queries'
 import { pathQuery } from '@/features/path/usePath'
-import { buttonLabel } from '@/features/path/logic'
+import { buttonLabel, MAIN_BUTTON } from '@/features/path/logic'
 
 const MAX_LEN = 1000
 
-type Starter = { label: string; payload: string }
+type Starter = { label: string; payload: string; historyLabel?: string }
 
 const STARTERS: Starter[] = [
   { label: 'Что мне делать дальше?', payload: 'intent:my_path' },
@@ -36,7 +36,11 @@ function Greeting({ disabled }: { disabled: boolean }) {
   if (path.data && !path.isError) {
     const g = contextGreeting(path.data, new Date(), config.data?.timezone)
     text = g.text
-    if (g.step) starters = [{ label: buttonLabel(g.step), payload: `step:${g.step.step_id}` }, ...STARTERS.slice(1)]
+    if (g.step) {
+      // короткая подпись: название шага уже в тексте; в истории — полная
+      const main = MAIN_BUTTON[g.step.help.kind]
+      starters = [{ label: main, payload: `step:${g.step.step_id}`, historyLabel: buttonLabel(g.step) }, ...STARTERS.slice(1).filter((s) => s.label !== main)]
+    }
   }
   return (
     <div className="msg msg--bot" data-testid="greeting">
@@ -44,7 +48,7 @@ function Greeting({ disabled }: { disabled: boolean }) {
         <p className="reply__text">{text}</p>
         <div className="row reply__actions">
           {starters.map((s) => (
-            <Button key={s.payload} size="s" disabled={disabled} onClick={() => void sendPayload(s.payload, s.label)}>
+            <Button key={s.payload} size="s" disabled={disabled} onClick={() => void sendPayload(s.payload, s.historyLabel ?? s.label)}>
               {s.label}
             </Button>
           ))}
