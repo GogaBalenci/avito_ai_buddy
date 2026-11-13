@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -507,6 +508,8 @@ func TestChatServicesDown(t *testing.T) {
 	}
 }
 
+var reLogTime = regexp.MustCompile(`time=\S+`)
+
 // Gaps of 10 §16 / 11 §1.16 closed by the wave 1–5 review: A-23, A-29, A-30, PA-14, PA-17.
 func TestChatSpecReview(t *testing.T) {
 	h := newIntegration(t)
@@ -519,7 +522,8 @@ func TestChatSpecReview(t *testing.T) {
 	}
 	d := draft(t, be, "2026-11-13", "2026-11-13")
 	expect(t, be.do("POST", "/api/actions/"+d.PendingAction.ActionId.String()+"/confirm", nil), http.StatusOK)
-	if logs := h.logs.String(); strings.Contains(logs, "2026-11-13") || strings.Contains(logs, "хочу отгул") { // A-23
+	// the slog timestamp carries today's date, which may equal the absence date: drop it first
+	if logs := reLogTime.ReplaceAllString(h.logs.String(), ""); strings.Contains(logs, "2026-11-13") || strings.Contains(logs, "хочу отгул") { // A-23
 		t.Fatalf("A-23: dates or message text in logs:\n%s", logs)
 	}
 	press(t, be, "intent:time_off") // A-30
