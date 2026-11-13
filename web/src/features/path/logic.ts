@@ -122,3 +122,26 @@ export function requestTransitions(prev: PathView | undefined, next: PathView): 
   }
   return out
 }
+
+/** «Неделя 1 — Вход в команду» → «Неделя 1». */
+export function shortPeriod(title: string): string {
+  return title.split(' — ')[0].trim()
+}
+
+/**
+ * Этапы, которые закрылись между двумя состояниями пути (09 §17.8): в `next`
+ * все шаги этапа «Готово», а в `prev` был хотя бы один открытый.
+ */
+export function completedPeriods(prev: PathView | undefined, next: PathView): Period[] {
+  if (!prev) return []
+  const allDone = (p: PathView, id: string) => {
+    const steps = p.steps.filter((s) => s.period === id)
+    return steps.length > 0 && steps.every((s) => s.status === 'done')
+  }
+  return next.periods.filter((per) => allDone(next, per.id) && !allDone(prev, per.id) && prev.steps.some((s) => s.period === per.id))
+}
+
+export function celebrationText(period: Period): string {
+  const short = shortPeriod(period.title)
+  return short.startsWith('Неделя') ? `${short} позади! 🎉 Обсуди её с наставником на 1:1` : `${short} позади! 🎉 Обсуди этап с наставником на 1:1`
+}

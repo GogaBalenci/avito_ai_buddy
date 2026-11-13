@@ -1,6 +1,7 @@
 // Приветствие пустого чата по данным пути (09 §17.6, AG-32): чистые функции.
 import type { PathStep, PathView } from '@/shared/api/schemas'
 import { ddmm, plural } from '@/shared/lib/dates'
+import { shortPeriod } from '@/features/path/logic'
 
 export const STATIC_GREETING =
   'Привет! Я Витя, твой бадди на стажировке. Подскажу, что делать дальше, отвечу на вопросы о команде и инструментах, оформлю отгул или заявку на доступ.'
@@ -24,10 +25,6 @@ export function partOfDay(now: Date, timeZone?: string): string {
   return 'Доброй ночи'
 }
 
-/** «Неделя 1 — Вход в команду» → «Неделя 1». */
-export function shortPeriod(title: string): string {
-  return title.split(' — ')[0].trim()
-}
 
 export type Greeting = { text: string; step: PathStep | null }
 

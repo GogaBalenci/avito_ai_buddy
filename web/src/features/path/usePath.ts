@@ -7,6 +7,7 @@ import { newId } from '@/shared/lib/uuid'
 import { useMascot } from '@/shared/mascot/mascotStore'
 import { toast } from '@/shared/ui/toastStore'
 import { applyStatus, REJECT_REASON, requestTransitions } from './logic'
+import { celebrate } from './celebrate'
 
 export const PATH_KEY = ['path'] as const
 
@@ -34,7 +35,8 @@ function usePathTransitions(data: PathView | undefined) {
   const prev = useRef<PathView | undefined>(undefined)
   useEffect(() => {
     if (!data) return
-    for (const t of requestTransitions(prev.current, data)) {
+    const transitions = requestTransitions(prev.current, data)
+    for (const t of transitions) {
       if (t.to === 'approved') {
         toast(`Доступ по шагу «${t.step.title}» одобрен`, { tone: 'success' })
         useMascot.getState().setClient('done')
@@ -43,6 +45,7 @@ function usePathTransitions(data: PathView | undefined) {
         toast(`Заявку по шагу «${t.step.title}» отклонили${reason ? `: ${REJECT_REASON[reason] ?? reason}` : ''}`, { tone: 'error', durationMs: 8000 })
       }
     }
+    if (transitions.some((t) => t.to === 'approved')) celebrate(prev.current, data) // 09 §17.8
     prev.current = data
   }, [data])
 }
@@ -67,7 +70,7 @@ export function useMarkStep() {
       if (snapshot) qc.setQueryData<PathView>(PATH_KEY, applyStatus(snapshot, v.stepId, v.to))
       return { snapshot }
     },
-    onSuccess: (res, v) => {
+    onSuccess: (res, v, ctx) => {
       qc.setQueryData<PathView>(PATH_KEY, (old) =>
         old
           ? {
@@ -82,6 +85,7 @@ export function useMarkStep() {
       )
       if (v.to === 'done') {
         useMascot.getState().setClient('done')
+        celebrate(ctx?.snapshot, qc.getQueryData<PathView>(PATH_KEY)) // только по ответу сервера (09 §17.8)
         toast(`Отмечено: «${res.step.title}»`, {
           tone: 'success',
           action: { label: 'Отменить', onClick: () => m.mutate({ stepId: v.stepId, to: 'in_progress', expected: 'done', key: newId(), undo: true }) },

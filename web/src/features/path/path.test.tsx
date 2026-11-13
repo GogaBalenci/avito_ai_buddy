@@ -252,6 +252,81 @@ describe('«Мой путь» panel (wave 3)', () => {
   })
 })
 
+describe('stage celebration (09 §17.8, AG-34)', () => {
+  // неделя 1: открыт только cm-1.9, остальные «Готово»
+  const almost = (): PathView => {
+    const base = f.path()
+    return f.path({
+      has_pending_requests: false,
+      steps: base.steps.map((s) => (s.period === 'week1' && s.step_id !== 'cm-1.9' ? { ...s, status: 'done' as const, request: s.request ? { ...s.request, status: 'approved' as const } : null } : s)),
+      waiting: [],
+      next_step: { step_id: 'cm-1.9', reason: 'current' },
+      progress: { period_done: 5, period_total: 6, overall_done: 5, overall_total: 7 },
+    })
+  }
+  const celebration = 'Неделя 1 позади! 🎉 Обсуди её с наставником на 1:1'
+
+  it('the last step of the week → toast once, Vitya done; «Отменить» and «Готово» again do not repeat it', async () => {
+    const calls: string[] = []
+    server.use(
+      http.get('/api/path', () => HttpResponse.json(almost())),
+      http.post('/api/path/steps/:id/status', async ({ request }) => {
+        const b = (await request.json()) as { status: 'done' | 'in_progress' }
+        calls.push(b.status)
+        const step = { ...almost().steps[3], status: b.status }
+        const done = b.status === 'done'
+        return HttpResponse.json({ step, changed: true, path_summary: { state: 'ready', next_step: done ? { step_id: 'cm-2.1', reason: 'ahead' } : { step_id: 'cm-1.9', reason: 'current' }, waiting: [], progress: { period_done: done ? 6 : 5, period_total: 6, overall_done: done ? 6 : 5, overall_total: 7 } } })
+      }),
+    )
+    renderApp('/')
+    const p = await screen.findByRole('complementary', { name: 'Мой путь' })
+    await within(p).findByText('Что дальше')
+    await userEvent.click(await within(p).findByRole('button', { name: /Заведи конспект встреч/ }))
+    await userEvent.click(within(p).getByRole('button', { name: 'Отметить пройденным' }))
+    expect(await screen.findByText(celebration, { selector: '.toast span' })).toBeInTheDocument()
+    expect(useMascot.getState().client).toBe('done')
+    await userEvent.click(screen.getByRole('button', { name: 'Отменить' }))
+    await waitFor(() => expect(calls).toEqual(['done', 'in_progress']))
+    await userEvent.click(await within(panel()).findByRole('button', { name: 'Отметить пройденным' })) // строка шага ещё раскрыта
+    await waitFor(() => expect(calls).toEqual(['done', 'in_progress', 'done']))
+    await screen.findAllByText('Отмечено: «Заведи конспект встреч с наставником»', { selector: '.toast span' })
+    expect(screen.getAllByText(celebration, { selector: '.toast span' })).toHaveLength(1)
+  })
+
+  it('a failed mark does not celebrate (optimistic update only)', async () => {
+    server.use(
+      http.get('/api/path', () => HttpResponse.json(almost())),
+      http.post('/api/path/steps/:id/status', () => errorBody(400, 'BAD_REQUEST', 'Нельзя')),
+    )
+    renderApp('/')
+    const p = await screen.findByRole('complementary', { name: 'Мой путь' })
+    await userEvent.click(await within(p).findByRole('button', { name: /Заведи конспект встреч/ }))
+    await userEvent.click(within(p).getByRole('button', { name: 'Отметить пройденным' }))
+    expect(await screen.findByText(/Нельзя/, { selector: '.toast span' })).toBeInTheDocument()
+    expect(screen.queryByText(celebration, { selector: '.toast span' })).toBeNull()
+  })
+
+  it('approval of the last request of the week celebrates too', async () => {
+    let n = 0
+    const base = f.path()
+    const waitingLast = f.path({
+      steps: base.steps.map((s) => (s.period === 'week1' && s.step_id !== 'cm-1.10' ? { ...s, status: 'done' as const } : s)),
+      next_step: { step_id: 'cm-2.1', reason: 'ahead' },
+    })
+    server.use(
+      http.get('/api/config', () => HttpResponse.json({ ...f.config, poll_interval_ms: 60 })),
+      http.get('/api/path', () => {
+        n++
+        if (n === 1) return HttpResponse.json(waitingLast)
+        return HttpResponse.json(f.path({ ...waitingLast, has_pending_requests: false, steps: waitingLast.steps.map((s) => (s.step_id === 'cm-1.10' ? { ...s, status: 'done' as const, request: { ...s.request!, status: 'approved' as const } } : s)) }))
+      }),
+    )
+    renderApp('/')
+    expect(await screen.findByText(celebration, { selector: '.toast span' }, { timeout: 3000 })).toBeInTheDocument()
+    expect(useMascot.getState().client).toBe('done')
+  })
+})
+
 describe('mentor read-only screens (MP-08)', () => {
   beforeEach(() => server.use(http.get('/api/me', () => HttpResponse.json(f.meMentor))))
 

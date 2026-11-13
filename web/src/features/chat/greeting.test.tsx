@@ -5,7 +5,8 @@ import { server } from '@/test/server'
 import { errorBody } from '@/test/handlers'
 import * as f from '@/test/fixtures'
 import { renderApp } from '@/test/render'
-import { contextGreeting, hourIn, partOfDay, shortPeriod, STATIC_GREETING } from './greeting'
+import { contextGreeting, hourIn, partOfDay, STATIC_GREETING } from './greeting'
+import { shortPeriod } from '@/features/path/logic'
 
 const chat = () => screen.getByRole('region', { name: 'Чат с Витей' })
 const greeting = async () => within(await screen.findByRole('region', { name: 'Чат с Витей' })).findByTestId('greeting')

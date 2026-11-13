@@ -1,5 +1,6 @@
 import * as f from '@/test/fixtures'
-import { applyStatus, buttonLabel, canMarkDone, canReopen, computeNext, panelState, periodDayText, reasonText, requestText, requestTransitions, startText } from './logic'
+import type { PathView } from '@/shared/api/schemas'
+import { applyStatus, buttonLabel, canMarkDone, canReopen, celebrationText, completedPeriods, computeNext, panelState, periodDayText, reasonText, requestText, requestTransitions, shortPeriod, startText } from './logic'
 
 describe('path logic', () => {
   it('period/day text uses server day (PF-07)', () => {
@@ -73,5 +74,26 @@ describe('path logic', () => {
     expect(requestTransitions(prev, next).map((t) => t.to)).toEqual(['approved'])
     const rej = f.path({ steps: prev.steps.map((s) => (s.step_id === 'cm-1.10' ? { ...s, request: { ...s.request!, status: 'rejected' as const } } : s)) })
     expect(requestTransitions(prev, rej).map((t) => t.to)).toEqual(['rejected'])
+  })
+})
+
+describe('stage celebration (09 §17.8, AG-34)', () => {
+  const closeWeek1 = (p: PathView) => ({ ...p, steps: p.steps.map((s) => (s.period === 'week1' ? { ...s, status: 'done' as const } : s)) })
+
+  it('completedPeriods finds a period whose last open step closed', () => {
+    const prev = f.path()
+    const next = closeWeek1(prev)
+    expect(completedPeriods(prev, next).map((p) => p.id)).toEqual(['week1'])
+    expect(completedPeriods(undefined, next)).toEqual([])
+    expect(completedPeriods(next, next)).toEqual([]) // already closed before
+    expect(completedPeriods(prev, prev)).toEqual([])
+    const empty = { ...prev, steps: prev.steps.filter((s) => s.period !== 'week2') }
+    expect(completedPeriods(empty, closeWeek1(empty)).map((p) => p.id)).toEqual(['week1']) // week2 without steps is not «closed»
+  })
+
+  it('celebrationText: «Неделя …» and other stages', () => {
+    expect(celebrationText(f.path().periods[0])).toBe('Неделя 1 позади! 🎉 Обсуди её с наставником на 1:1')
+    expect(celebrationText({ ...f.path().periods[0], title: 'Месяц 2 — Самостоятельность' })).toBe('Месяц 2 позади! 🎉 Обсуди этап с наставником на 1:1')
+    expect(shortPeriod('Без тире')).toBe('Без тире')
   })
 })
