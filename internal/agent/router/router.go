@@ -790,6 +790,13 @@ func (g *Agent) outOfScope(ctx context.Context, a actor.Actor, in Input, rec rec
 		mentorTopic("Звучит непросто, и это нормально в начале. Об этом стоит поговорить с наставником или руководителем на 1:1 — помочь сформулировать, с чего начать?")
 	case "personal_data":
 		r.Text = "Контакты коллег не даю — найди человека в корпоративном справочнике или спроси наставника."
+	case "role_change": // 09 §17.4, AG-30: the role comes from the session only; no joke
+		who := "стажёра"
+		if a.Role == actor.Mentor {
+			who = "наставника"
+		}
+		r.Text = "Роль мне не поменять — я вижу тебя как " + who + ". Чем помочь?"
+		menu(r, a.Role)
 	default:
 		return g.help(in, a)
 	}

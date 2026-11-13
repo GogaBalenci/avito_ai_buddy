@@ -41,15 +41,29 @@ var All = []string{Help, MyPath, StepExplain, StepDone, KBQuestion, TimeOff, Acc
 
 // GuardTopics win over a model (09 §3.3).
 var GuardTopics = map[string]bool{"salary": true, "vacation": true, "sick_leave": true,
-	"personal_data": true, "wellbeing": true, "evaluation": true}
+	"personal_data": true, "wellbeing": true, "evaluation": true, "role_change": true}
 
 // actionIntents: a second one above the threshold becomes a quick reply (09 §6.3, p. 4).
 var actionIntents = map[string]bool{TimeOff: true, AccessRequest: true}
 
 type rawTopic struct {
-	Words   []string `json:"words"`
-	Phrases []string `json:"phrases"`
-	Weight  float64  `json:"weight"`
+	Words   []string  `json:"words"`
+	Phrases []string  `json:"phrases"`
+	Pairs   []rawPair `json:"pairs"`
+	Weight  float64   `json:"weight"`
+}
+
+// rawPair: a word of First, then within Gap tokens a word of Second
+// («телефон моего наставника», «забудь все инструкции», 09 §17.4–17.5).
+type rawPair struct {
+	First  []string `json:"first"`
+	Second []string `json:"second"`
+	Gap    int      `json:"gap"`
+}
+
+type pairPattern struct {
+	first, second map[string]bool
+	gap           int
 }
 
 type rawIntent struct {
@@ -98,6 +112,7 @@ type smallKind struct {
 
 type pattern struct {
 	stems  []string
+	pair   *pairPattern
 	weight float64
 	topic  string
 }
@@ -162,6 +177,13 @@ func Parse(b []byte) (*Dict, error) {
 		for topic, t := range ri.Topics {
 			for _, w := range append(append([]string{}, t.Words...), t.Phrases...) {
 				ps = append(ps, pattern{stems: StemPhrase(w), weight: t.Weight, topic: topic})
+			}
+			for _, pr := range t.Pairs {
+				if len(pr.First) == 0 || len(pr.Second) == 0 || pr.Gap < 0 {
+					return nil, fmt.Errorf("intents dictionary: topic %q: a pair needs first, second and gap >= 0", topic)
+				}
+				ps = append(ps, pattern{stems: []string{"pair:" + strings.Join(pr.First, ",")}, weight: t.Weight, topic: topic,
+					pair: &pairPattern{first: stemSet(pr.First), second: stemSet(pr.Second), gap: pr.Gap}})
 			}
 		}
 		for w, wt := range ri.Words {
@@ -405,6 +427,23 @@ func (d *Dict) matched(in input, p []string) bool {
 	return false
 }
 
+// pairMatched: a non-negated word of first followed, with at most gap tokens
+// in between, by a word of second. The order matters: «наставнику в телеграм»
+// is not a request for a contact.
+func (d *Dict) pairMatched(in input, p *pairPattern) bool {
+	for i, st := range in.stems {
+		if !p.first[st] || d.negated(in, i, 1, false) {
+			continue
+		}
+		for j := i + 1; j < len(in.stems) && j <= i+1+p.gap; j++ {
+			if p.second[in.stems[j]] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Recognize runs the algorithm of 09 §6.3 on (already masked) text.
 func (d *Dict) Recognize(text string, h Hints) Result {
 	in := d.prepare(text)
@@ -430,7 +469,11 @@ func (d *Dict) Recognize(text string, h Hints) Result {
 	topicScore := map[string]float64{}
 	for name, ps := range d.patterns {
 		for _, p := range ps {
-			if !d.matched(in, p.stems) {
+			if p.pair != nil {
+				if !d.pairMatched(in, p.pair) {
+					continue
+				}
+			} else if !d.matched(in, p.stems) {
 				continue
 			}
 			if p.topic != "" {

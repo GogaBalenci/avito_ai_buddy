@@ -28,7 +28,7 @@
         "topic":         { "type": "string",
                            "enum": ["salary", "vacation", "sick_leave", "business_trip",
                                     "hiring", "dismissal", "benefits", "evaluation",
-                                    "wellbeing", "personal_data", "other"],
+                                    "wellbeing", "personal_data", "role_change", "other"],
                            "description": "Только для out_of_scope" }
       }
     }

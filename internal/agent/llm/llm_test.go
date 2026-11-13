@@ -361,3 +361,17 @@ func TestRephraseVoice(t *testing.T) {
 		t.Fatalf("a new fact must be rejected, rule %d", rule)
 	}
 }
+
+// AG-30: the schema accepts topic role_change; the prompt example uses it.
+func TestIntentSchemaRoleChange(t *testing.T) {
+	ir, err := ParseIntent(`{"intent":"out_of_scope","confidence":0.9,"params":{"topic":"role_change"}}`)
+	if err != nil || ir.Params.Topic != "role_change" {
+		t.Fatalf("%v %+v", err, ir)
+	}
+	if _, err := ParseIntent(`{"intent":"out_of_scope","confidence":0.9,"params":{"topic":"admin"}}`); err == nil {
+		t.Fatal("unknown topic must fail the schema")
+	}
+	if !strings.Contains(intentSystem, `"topic":"role_change"`) || !strings.Contains(intentSystem, "болтовня") || IntentVersion != "intent-v2" {
+		t.Fatal("intent prompt v2: role_change example and chit-chat → help")
+	}
+}

@@ -16,9 +16,9 @@
 - [x] 3.4 Тесты: 5+ формулировок на вид, таблица ложных срабатываний, повтор → тот же вариант
 
 ## 4. Подмена роли (AG-30)
-- [ ] 4.1 Пары слов в защитных темах (`pairs`), тема `role_change` в словаре и `GuardTopics`
-- [ ] 4.2 Ответ без шутки + меню; `topic: role_change` в `intent-result.v1.json`, пример в `intent.system.txt`
-- [ ] 4.3 Тесты R3 в `demo` и с заглушкой модели (`my_requests`, `access_request`): нет `access.decide_request`, нет черновиков
+- [x] 4.1 Пары слов в защитных темах (`pairs`), тема `role_change` в словаре и `GuardTopics`
+- [x] 4.2 Ответ без шутки + меню; `topic: role_change` в `intent-result.v1.json`, пример в `intent.system.txt`
+- [x] 4.3 Тесты R3 в `demo` и с заглушкой модели (`my_requests`, `access_request`): нет `access.decide_request`, нет черновиков
 
 ## 5. Контакты коллег (AG-31)
 - [ ] 5.1 Воспроизвести в `demo` и с заглушкой модели, причина — в `09` §17.5
