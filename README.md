@@ -10,8 +10,8 @@
 
 | | |
 |---|---|
-| Видео (2–3 мин) | ⟨VIDEO_URL⟩ |
-| Презентация (PDF) | ⟨PDF_URL⟩ |
+| Видео (5 мин) | [Яндекс Диск](https://disk.yandex.ru/i/EDy6TAPg5yYw_Q) |
+| Презентация (PDF) | [`docs/presentation.pdf`](docs/presentation.pdf) |
 | Спецификации (SDD) | [`docs/`](docs/README.md) и [`openspec/specs/`](openspec/specs/) |
 
 > Все данные синтетические, все инструкции тестовые. Это допущения команды, а не регламенты Авито. Корпоративные сервисы заменены MCP-имитациями. Для проверки ключ LLM не нужен: в режиме `demo` проходятся все сценарии.
@@ -260,7 +260,7 @@ docker compose --profile test run --rm smoke      # S1–S4 и наставни�
 |---|---|---|---|---|
 | Go — приложение | Все пакеты, кроме имитаций и сгенерированного кода. Общие с имитациями пакеты (`internal/timeoff/rules`, `internal/checklist`, `internal/tracks`, `internal/kb`, `internal/employees`) входят в порог | 80% statements (цель 85%), CI падает ниже порога | 91,1% statements | `coverage/go-app.html`, `coverage/go-app.txt` |
 | Go — имитации `mcp-mocks` | `internal/mcpmocks`, `cmd/mcp-mocks` | **вне порога**, справочно | 70,5% statements | `coverage/go-mocks.html` |
-| Фронт | Весь код `web/src`: хуки, сторы, схемы Zod, API-клиент, экраны | 80% по каждой метрике: lines, statements, functions, branches | lines 98,5% · statements 97,5% · functions 95,2% · branches 91,9% | `web/coverage/index.html`, `web/coverage/lcov.info` |
+| Фронт | Весь код `web/src`: хуки, сторы, схемы Zod, API-клиент, экраны | 80% по каждой метрике: lines, statements, functions, branches | lines 98,5% · statements 97,4% · functions 95,2% · branches 91,8% | `web/coverage/index.html`, `web/coverage/lcov.info` |
 
 Покрытие по пакетам и дата последнего прогона — [`docs/coverage-summary.md`](docs/coverage-summary.md).
 
