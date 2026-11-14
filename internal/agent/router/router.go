@@ -146,10 +146,20 @@ func (g *Agent) Handle(ctx context.Context, a actor.Actor, in Input) (Output, er
 	if out.Reply.Intent != api.AgentReplyIntent(rules.Unknown) {
 		g.Redis.Del(ctx, unkKey(a.UserID)) // any recognized intent resets the counter (09 §6.4)
 	}
-	g.publish(ctx, "reply_sent", map[string]any{"intent": string(out.Reply.Intent),
-		"latency_ms_total": g.Clock.Now().Sub(start).Milliseconds(), "rephrased": out.rephrased,
-		"reply_id": out.Reply.ReplyId.String()})
+	if g.Events != nil { // the actual mode of the reply (demo / llm / fallback), so dashboards can split by it
+		_ = g.Events.Publish(ctx, events.Event{Name: "reply_sent", Mode: replyMode(out.Reply.Mode), Payload: map[string]any{
+			"intent": string(out.Reply.Intent), "latency_ms_total": g.Clock.Now().Sub(start).Milliseconds(),
+			"rephrased": out.rephrased, "reply_id": out.Reply.ReplyId.String()}})
+	}
 	return out, nil
+}
+
+// replyMode maps the reply's mode to the event's; an empty mode is demo.
+func replyMode(m api.AgentReplyMode) string {
+	if m == "" {
+		return "demo"
+	}
+	return string(m)
 }
 
 func (g *Agent) publish(ctx context.Context, name string, payload map[string]any) {

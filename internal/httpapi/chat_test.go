@@ -154,6 +154,9 @@ func TestChatBehaviorTable(t *testing.T) {
 	if len(h.events.Events("intent_recognized")) == 0 || len(h.events.Events("reply_sent")) == 0 {
 		t.Fatal("events intent_recognized / reply_sent")
 	}
+	if ev := h.events.Events("reply_sent"); ev[len(ev)-1].Mode != "demo" {
+		t.Fatalf("reply_sent mode in demo: %q", ev[len(ev)-1].Mode)
+	}
 }
 
 // T-24: personal data is masked before storage; the reply says so.

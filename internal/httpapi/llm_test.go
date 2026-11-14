@@ -96,6 +96,9 @@ func TestLLMIntentPrefill(t *testing.T) {
 	withModel(t, h, m, nil)
 	be := h.login("u-intern-be")
 	r := say(t, be, "хочу взять отгул в четверг и пятницу")
+	if ev := h.events.Events("reply_sent"); ev[len(ev)-1].Mode != "llm" {
+		t.Fatalf("reply_sent mode with a model: %q", ev[len(ev)-1].Mode)
+	}
 	f := hasAction(r, api.OpenForm)
 	if r.Mode != api.AgentReplyModeLlm || r.Intent != "time_off" || f == nil || f.Prefill == nil ||
 		f.Prefill.DateFrom.String() != "2026-11-12" || f.Prefill.DateTo.String() != "2026-11-13" {

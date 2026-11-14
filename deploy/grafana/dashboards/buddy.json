@@ -20,7 +20,7 @@
     {
       "type": "stat",
       "title": "Ответов бадди",
-      "description": "События reply_sent за период",
+      "description": "События reply_sent за период: всего, из них с моделью (llm) и в упрощённом режиме (fallback)",
       "targets": [
         {
           "refId": "A",
@@ -31,7 +31,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Ответов\" FROM app.events WHERE name='reply_sent' AND $__timeFilter(ts)"
+          "rawSql": "SELECT count(*) AS \"Ответов\", count(*) FILTER (WHERE mode='llm') AS \"С моделью\", count(*) FILTER (WHERE mode='fallback') AS \"Упрощённый режим\" FROM app.events WHERE name='reply_sent' AND $__timeFilter(ts)"
         }
       ],
       "fieldConfig": {
