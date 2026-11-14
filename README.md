@@ -276,11 +276,46 @@ docker compose --profile test run --rm smoke      # S1–S4 и наставни�
 
 ## Архитектура и интеграции
 
+```mermaid
+flowchart LR
+  U["Стажёр / наставник<br/>браузер"] --> W["web<br/>nginx: React SPA + прокси /api"]
+  W --> A["api (Go)<br/>HTTP API · оркестратор агента · права"]
+  A -->|"намерение JSON,<br/>переформулировка"| L["LLM (необязательно)<br/>OpenAI-совместимый API"]
+  A -->|"MCP: checklist, knowledge,<br/>absences, access"| M["mcp-mocks (Go)<br/>4 MCP-сервера-имитации"]
+  A --> P1[("PostgreSQL<br/>схема app: события, копии заявок")]
+  A --> R[("Redis<br/>сессии, черновики действий")]
+  M --> P2[("PostgreSQL<br/>схемы mock_*")]
+  G["Grafana (профиль observability)"] -.->|"только чтение app.events"| P1
 ```
-браузер ──► web (nginx: SPA + /api) ──► api (Go: HTTP API, оркестратор агента, права) ──► mcp-mocks (Go: 4 MCP-сервера)
-                                          │            │                                      │
-                                       PostgreSQL    Redis                                 PostgreSQL
-                                       (схема app)   (сессии, черновики)                   (схемы mock_*)
+
+Без ключа модели всё работает: намерение распознают правила `demo`, ответ строится по шаблону. Модель не вызывает инструменты и не принимает решений.
+
+**Путь «запрос → результат» на примере отгула (S3):**
+
+```mermaid
+sequenceDiagram
+  actor S as Стажёр
+  participant UI as web
+  participant API as api: оркестратор
+  participant G as guard (права)
+  participant AB as MCP absences
+  S->>UI: «хочу отгул»
+  UI->>API: POST /api/chat/messages
+  API->>API: намерение time_off (правила или модель)
+  API-->>UI: форма «от — до» + тестовый порядок [1]
+  S->>UI: даты → «Проверить»
+  UI->>API: POST /api/actions (черновик)
+  API->>API: правила дат (тот же Go-пакет, что у сервиса)
+  API-->>UI: карточка черновика, «Подтвердить»
+  Note over S,UI: «да» в чате не подтверждает — только кнопка
+  S->>UI: «Подтвердить»
+  UI->>API: POST /api/actions/{id}/confirm
+  API->>G: buddy.absences.create (self)
+  G-->>API: разрешено
+  API->>AB: create_request (ключ идемпотентности = action_id)
+  AB-->>API: ABS-000102, registered
+  API-->>UI: «Готово» + «Скопировать сообщение наставнику»
+  Note over API,AB: сбой сервиса → «Повторить» с тем же action_id, дубликата нет
 ```
 
 - **Фронт:** React 19, TypeScript, TanStack Query и Router, Zustand, Zod. Схемы Zod связаны с OpenAPI через `openapi-typescript` и `satisfies`.
