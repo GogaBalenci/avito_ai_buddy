@@ -55,7 +55,7 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "value",
+        "textMode": "value_and_name",
         "justifyMode": "center",
         "orientation": "auto"
       },
