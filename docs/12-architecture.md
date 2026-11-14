@@ -1,7 +1,7 @@
 # Архитектура AI-buddy («Авиитик Витя»)
 
 Версия 1.1 · 11.11.2026 · статус: C0 закрыт, патч `17` перенесён
-Источники: `02-decisions.md` v3.8, `09-spec-agent.md` v1.2, `10-spec-s3-time-off.md` v1.2, `11-spec-s1-s2-s4.md` v1.1, `17-qa-patch.md` v1.0 (до переноса — источник правды по своим пунктам), `16-qa-webinar.md`.
+Источники: решения команды, `09-spec-agent.md` v1.2, `10-spec-s3-time-off.md` v1.2, `11-spec-s1-s2-s4.md` v1.1, `history/17-qa-patch.md` v1.0 (до переноса — источник правды по своим пунктам), `16-qa-webinar.md`.
 Здесь окончательно зафиксированы структура репозитория, компоненты, OpenAPI, контракты MCP, схема БД и ключи Redis, а также имена `MCP_*_URL` и эндпоинтов чата. Если имена в `09`–`11` расходятся с этим файлом, прав этот файл (так сказано в самих спецификациях). Список правок к ним — §16, переносится промтом 3.0. Матрица прав — `13-permissions.md` (v1.1).
 
 **Изменения v1.1 (после C0 и промта 3.0):** §2 — фактическое имя репозитория и модуля, пакеты `internal/health` и `internal/httpx`, скрипты, состав `docs/` и `openspec/`; §4.3 — комментарий к `ALLOWED_ORIGINS` на отдельной строке (как в `.env.example`); загрузчик базы знаний — 8 правил, `conflicts_with` — правило 7 (`11` v1.2); §16 перенесён в `09` v1.3, `10` v1.3, `11` v1.2; §17 — версии зафиксированы на C0.
@@ -143,7 +143,7 @@ avito_ai_buddy/
 | Компоненты фронта не используют `dangerouslySetInnerHTML` | eslint `react/no-danger: error` | AG-26 |
 | Сгенерированный код совпадает со спецификацией | CI: `scripts/gen.sh && git diff --exit-code` | OpenAPI и код не расходятся |
 
-**Почему общие пакеты лежат вне `mcpmocks`.** `timeoff/rules`, `checklist/fsm`, `tracks`, `kb`, `employees` — прикладная логика и проверка контента. Её используют и `api`, и CI, поэтому по решению `02` она входит в порог. `catalog` нужен только имитации и лежит внутри `mcpmocks`.
+**Почему общие пакеты лежат вне `mcpmocks`.** `timeoff/rules`, `checklist/fsm`, `tracks`, `kb`, `employees` — прикладная логика и проверка контента. Её используют и `api`, и CI, поэтому по решению команды она входит в порог. `catalog` нужен только имитации и лежит внутри `mcpmocks`.
 
 ---
 
@@ -328,7 +328,7 @@ LOG_LEVEL=info
 
 Кто что читает: `api` — всё, кроме `ACCESS_TIMER_MINUTES`; `mcp-mocks` — `DATABASE_URL`, `TZ`, `ACCESS_TIMER_MINUTES`, `DEMO_TOOLS_ENABLED`, `LOG_LEVEL`. Секретов в репозитории нет; `.env` в `.gitignore`; ключ LLM не попадает в логи и в `/api/llm/health`.
 
-### 4.4 Зафиксированные имена (закрывает открытый вопрос `02`)
+### 4.4 Зафиксированные имена (закрывает открытый вопрос из решений команды)
 | Что | Имя |
 |---|---|
 | Адреса сервисов | `MCP_CHECKLIST_URL`, `MCP_KNOWLEDGE_URL`, `MCP_ABSENCES_URL`, `MCP_ACCESS_URL` |
@@ -1281,7 +1281,7 @@ components:
         value: {type: string, description: "mock_absences_fault: off | unavailable (| slow, если успели); access_mentor_approval: on | off"}
 ```
 
-**Итого 29 операций.** Порядок реализации — по чекпоинтам `07`: к C3 — system, auth, chat, actions, path, time-off, requests, demo/reset; к C4 — kb, feedback, client-events, access, mentor/interns; под чертой отсечения — `mentor/access-requests*`. Обработчик, который ещё не реализован, отвечает 501 и в README не упоминается.
+**Итого 29 операций.** Порядок реализации — по чекпоинтам плана работ: к C3 — system, auth, chat, actions, path, time-off, requests, demo/reset; к C4 — kb, feedback, client-events, access, mentor/interns; под чертой отсечения — `mentor/access-requests*`. Обработчик, который ещё не реализован, отвечает 501 и в README не упоминается.
 
 ---
 
@@ -1855,7 +1855,7 @@ CREATE TABLE mock_access.decisions (
 | Фронт | хуки, сторы, Zod-схемы, API-клиент, ключевые экраны | Vitest + Testing Library + MSW, jsdom | `web/src/**` |
 | Smoke | основной сценарий S1 + S3 (+ S4 после C4) через HTTP | весь стек | `test/smoke` |
 
-LLM в тестах — всегда заглушка `LLMClient`; адаптер `openai_compatible` проверяется на фейковом HTTP-сервере. Изоляция БД: `internal/testkit/pgtest` создаёт для каждого пакета свою базу из шаблона с применёнными миграциями (`CREATE DATABASE … TEMPLATE`) — пакеты идут параллельно и не мешают друг другу. Отдельной инфраструктуры для гонок нет: PostgreSQL из compose (решение `02` v3.8).
+LLM в тестах — всегда заглушка `LLMClient`; адаптер `openai_compatible` проверяется на фейковом HTTP-сервере. Изоляция БД: `internal/testkit/pgtest` создаёт для каждого пакета свою базу из шаблона с применёнными миграциями (`CREATE DATABASE … TEMPLATE`) — пакеты идут параллельно и не мешают друг другу. Отдельной инфраструктуры для гонок нет: PostgreSQL из compose (решение команды).
 
 ### 11.2 Команды и отчёты
 `scripts/test-go.sh` (запускается в сервисе `test-go`):
@@ -1899,7 +1899,7 @@ scripts/coverage-check.sh "$OUT/go-app.txt" 80     # жёсткий порог C
 | `test` | `docker compose up -d --wait postgres redis` → `docker compose --profile test run --rm test-go` → `test-web`; артефакт `coverage/` + `web/coverage/`; итоги покрытия в `$GITHUB_STEP_SUMMARY` | тест упал, покрытие < 80 в любом отчёте приложения |
 | `e2e` | `docker compose up --build --wait` → `docker compose --profile test run --rm smoke`; при ошибке — `docker compose logs` в артефакт | основной сценарий не проходит, не стартует сборка amd64 |
 
-В CI выполняются **те же команды, что в README**: зелёный CI доказывает, что инструкция работает. arm64 проверяется локально на Mac (`02`).
+В CI выполняются **те же команды, что в README**: зелёный CI доказывает, что инструкция работает. arm64 проверяется локально на Mac (решение команды).
 
 ---
 
@@ -1931,14 +1931,14 @@ scripts/coverage-check.sh "$OUT/go-app.txt" 80     # жёсткий порог C
 | Вариант | Почему нет |
 |---|---|
 | Отдельный контейнер на каждую имитацию | +3 контейнера и healthcheck'а при той же заменяемости: адрес endpoint и так в env |
-| Testcontainers для гонок | Отдельная инфраструктура; PostgreSQL из compose проверяет то же (решение `02` v3.8) |
+| Testcontainers для гонок | Отдельная инфраструктура; PostgreSQL из compose проверяет то же (решение команды) |
 | OpenAPI 3.1 | `oapi-codegen` поддерживает его не полностью; выигрыш для эксперта нулевой |
 | `GENERATED`-колонки FTS | `array_to_string` не `IMMUTABLE` — миграция падает (§8.3) |
 | Флаги имитаций в `app.feature_flags` | `api` знал бы о флагах, которых в проде нет; имитация читала бы чужую схему |
 | Отдельные пользователи БД на схему | Нужен init-скрипт контейнера — лишний риск запуска; граница проверяется тестом, в проде — отдельные БД |
 | Vite dev-сервер в compose | Медленнее, нестабильнее и не похоже на прод; nginx со статикой даёт один origin и CSP |
 | Публиковать порты `api` и `mcp-mocks` | Больше конфликтов портов; `mcp-mocks` доверяет `actor` только потому, что недоступен снаружи |
-| SSE для ответов | Roadmap (`02`); ответ в demo < 300 мс |
+| SSE для ответов | Roadmap (решение команды); ответ в demo < 300 мс |
 
 ---
 

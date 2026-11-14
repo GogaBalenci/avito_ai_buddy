@@ -269,7 +269,7 @@ docker compose --profile test run --rm smoke      # S1–S4 и наставни�
 | [`docs/10-spec-s3-time-off.md`](docs/10-spec-s3-time-off.md) | S3 «Отгул» |
 | [`docs/11-spec-s1-s2-s4.md`](docs/11-spec-s1-s2-s4.md) | S1 «Мой путь», S2 «Вопросы», S4 «Доступы» |
 | [`docs/08-intern-journey.md`](docs/08-intern-journey.md) | Путь стажёра (CJM) по чек-листу Авито, формат YAML-треков |
-| [`docs/16-qa-webinar.md`](docs/16-qa-webinar.md), [`docs/17-qa-patch.md`](docs/17-qa-patch.md) | Уточнения эксперта с Q&A и патч к спецификациям |
+| [`docs/16-qa-webinar.md`](docs/16-qa-webinar.md), [`docs/history/17-qa-patch.md`](docs/history/17-qa-patch.md) | Уточнения эксперта с Q&A и патч к спецификациям |
 | [`openspec/specs/`](openspec/specs/) | Действующие требования OpenSpec (SHALL + сценарии), 9 capability: `agent-core`, `agent-intents`, `agent-replies`, `agent-guardrails`, `agent-character`, `my-path`, `time-off`, `access-requests`, `knowledge-qa` |
 | [`openspec/changes/archive/`](openspec/changes/archive/) | История изменений: proposal, design, tasks, дельты |
 | [`api/openapi.yaml`](api/openapi.yaml), [`contracts/`](contracts/) | Контракт HTTP API (OpenAPI 3.0.3) и JSON Schema инструментов MCP |
