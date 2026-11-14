@@ -27,7 +27,7 @@ jobs:
       - name: go vet
         run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           # latest v2: a pinned old release may refuse to lint code for a newer Go
           version: latest
@@ -64,7 +64,7 @@ jobs:
             echo "- Go mocks (reference): $(tail -1 coverage/go-mocks.txt | awk '{print $NF}')"
             node -e "const s=require('./web/coverage/coverage-summary.json').total;console.log('- Web: lines '+s.lines.pct+'%, statements '+s.statements.pct+'%, functions '+s.functions.pct+'%, branches '+s.branches.pct+'%')"
           } >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: coverage
@@ -89,7 +89,7 @@ jobs:
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color > compose-logs.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: compose-logs
